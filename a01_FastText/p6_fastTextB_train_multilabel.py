@@ -53,7 +53,10 @@ def main(_):
     #print("end padding & transform to one hot...")
     word2index, label2index, trainX, trainY, vaildX, vaildY, testX, testY=load_data(FLAGS.cache_file_h5py, FLAGS.cache_file_pickle)
     index2label={v:k for k,v in label2index.items()}
-    vocab_size = len(word2index);print("cnn_model.vocab_size:",vocab_size);num_classes=len(label2index);print("num_classes:",num_classes)
+    vocab_size = len(word2index)
+    print("cnn_model.vocab_size:",vocab_size)
+    num_classes=len(label2index)
+    print("num_classes:",num_classes)
     num_examples,FLAGS.sentence_len=trainX.shape
     print("num_examples of training:",num_examples,";sentence_len:",FLAGS.sentence_len)
 
@@ -66,7 +69,7 @@ def main(_):
                            vocab_size,FLAGS.embed_size,FLAGS.is_training)
         #Initialize Save
         saver=tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir}checkpoint"):
             print("Restoring Variables from Checkpoint")
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.ckpt_dir))
         else:
@@ -100,7 +103,7 @@ def main(_):
                     # save model to checkpoint
                     if start%(6000*FLAGS.batch_size)==0:
                         print("Going to save checkpoint.")
-                        save_path = FLAGS.ckpt_dir + "model.ckpt"
+                        save_path = f"{FLAGS.ckpt_dir}model.ckpt"
                         saver.save(sess, save_path, global_step=epoch)  # fast_text.epoch_step
             #epoch increment
             print("going to increment epoch counter....")
@@ -113,17 +116,16 @@ def main(_):
                 print("Epoch %d Validation Loss:%.3f\tValidation Accuracy: %.3f" % (epoch,eval_loss,eval_accuracy)) #,\tValidation Accuracy: %.3f--->eval_acc
                 #save model to checkpoint
                 print("Going to save checkpoint.")
-                save_path=FLAGS.ckpt_dir+"model.ckpt"
+                save_path = f"{FLAGS.ckpt_dir}model.ckpt"
                 saver.save(sess,save_path,global_step=epoch) #fast_text.epoch_step
 
         # 5.最后在测试集上做测试，并报告测试准确率 Test
         test_loss, test_acc = do_eval(sess, fast_text, testX, testY,batch_size,index2label) #testY1999
-    pass
 
 # 在验证集上做验证，报告损失、精确度
 def do_eval(sess,fast_text,evalX,evalY,batch_size,vocabulary_index2word_label): #evalY1999
-    evalX=evalX[0:3000]
-    evalY=evalY[0:3000]
+    evalX = evalX[:3000]
+    evalY = evalY[:3000]
     number_examples,labels=evalX.shape
     print("number_examples for validation:",number_examples)
     eval_loss,eval_acc,eval_counter=0.0,0.0,0
@@ -143,9 +145,7 @@ def assign_pretrained_word_embedding(sess,vocabulary_index2word,vocab_size,fast_
     print("using pre-trained word emebedding.started...")
     # word2vecc=word2vec.load('word_embedding.txt') #load vocab-vector fiel.word2vecc['w91874']
     word2vec_model = word2vec.load('zhihu-word2vec-multilabel.bin-100', kind='bin')
-    word2vec_dict = {}
-    for word, vector in zip(word2vec_model.vocab, word2vec_model.vectors):
-        word2vec_dict[word] = vector
+    word2vec_dict = dict(zip(word2vec_model.vocab, word2vec_model.vectors))
     word_embedding_2dlist = [[]] * vocab_size  # create an empty word_embedding list.
     word_embedding_2dlist[0] = np.zeros(FLAGS.embed_size)  # assign empty for first word:'PAD'
     bound = np.sqrt(6.0) / np.sqrt(vocab_size)  # bound for random variables.
@@ -189,9 +189,9 @@ def calculate_accuracy(labels_predicted, labels,eval_counter):
     count = 0
     label_dict = {x: x for x in labels}
     for label_predict in labels_predicted:
-        flag = label_dict.get(label_predict, None)
+        flag = label_dict.get(label_predict)
     if flag is not None:
-        count = count + 1
+        count += 1
     return count / len(labels)
 
 def load_data(cache_file_h5py,cache_file_pickle):
@@ -240,14 +240,6 @@ def process_labels(trainY_batch,require_size=5,number=None):
         y_list_dense = [i for i, label in enumerate(y_list_sparse) if int(label) == 1]
         y_list=proces_label_to_algin(y_list_dense,require_size=require_size)
         trainY_batch_result[index]=y_list
-        if number is not None and number%30==0:
-            pass
-            #print("####0.y_list_sparse:",y_list_sparse)
-            #print("####1.y_list_dense:",y_list_dense)
-            #print("####2.y_list:",y_list) # 1.label_index: [315] ;2.y_list: [315, 315, 315, 315, 315] ;3.y_list: [0. 0. 0. ... 0. 0. 0.]
-    if number is not None and number % 30 == 0:
-        #print("###3trainY_batch_result:",trainY_batch_result)
-        pass
     return trainY_batch_result
 
 def proces_label_to_algin(ys_list,require_size=5):
@@ -256,18 +248,17 @@ def proces_label_to_algin(ys_list,require_size=5):
     :param ys_list: a list
     :return: a list
     """
-    ys_list_result=[0 for x in range(require_size)]
+    ys_list_result = [0 for _ in range(require_size)]
     if len(ys_list)>=require_size: #超长
-        ys_list_result=ys_list[0:require_size]
-    else:#太短
-       if len(ys_list)==1:
-           ys_list_result =[ys_list[0] for x in range(require_size)]
-       elif len(ys_list)==2:
-           ys_list_result = [ys_list[0],ys_list[0],ys_list[0],ys_list[1],ys_list[1]]
-       elif len(ys_list) == 3:
-           ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[1], ys_list[2]]
-       elif len(ys_list) == 4:
-           ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[2], ys_list[3]]
+        ys_list_result = ys_list[:require_size]
+    elif len(ys_list)==1:
+        ys_list_result = [ys_list[0] for _ in range(require_size)]
+    elif len(ys_list)==2:
+        ys_list_result = [ys_list[0],ys_list[0],ys_list[0],ys_list[1],ys_list[1]]
+    elif len(ys_list) == 3:
+        ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[1], ys_list[2]]
+    elif len(ys_list) == 4:
+        ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[2], ys_list[3]]
     return ys_list_result
 if __name__ == "__main__":
     tf.app.run()

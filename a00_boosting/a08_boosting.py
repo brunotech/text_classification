@@ -24,11 +24,8 @@ def compute_labels_weights(weights_label,logits,labels):
         label=labels[i]
         label_predict=labels_predict[i]
         weight=weights_label.get(label,None)
-        if weight==None:
-            if label_predict == label:
-                weights_label[label]=(1,1)
-            else:
-                weights_label[label]=(1,0)
+        if weight is None:
+            weights_label[label] = (1, 1) if label_predict == label else (1, 0)
         else:
             number=weight[0]
             correct=weight[1]
@@ -57,8 +54,7 @@ def get_weights_for_current_batch(answer_list,weights_dict):
 
 #3.compute loss using cross entropy with weights
 def loss(logits,labels,weights):
-    loss= tf.losses.sparse_softmax_cross_entropy(labels, logits,weights=weights)
-    return loss
+    return tf.losses.sparse_softmax_cross_entropy(labels, logits,weights=weights)
 
 #######################################################################
 #util function

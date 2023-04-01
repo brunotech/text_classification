@@ -35,9 +35,14 @@ tf.app.flags.DEFINE_integer("max_seq_length",200,"max sequence length")
 def main(_):
     # 1. get training data and vocabulary & labels dict
     word2index, label2index, trainX, trainY, vaildX, vaildY, testX, testY = load_data(FLAGS.cache_file_h5py,FLAGS.cache_file_pickle)
-    vocab_size = len(word2index); print("bert model.vocab_size:", vocab_size);
-    num_labels = len(label2index); print("num_labels:", num_labels); cls_id=word2index['CLS'];print("id of 'CLS':",word2index['CLS'])
-    num_examples, FLAGS.max_seq_length = trainX.shape;print("num_examples of training:", num_examples, ";max_seq_length:", FLAGS.max_seq_length)
+    vocab_size = len(word2index)
+    print("bert model.vocab_size:", vocab_size);
+    num_labels = len(label2index)
+    print("num_labels:", num_labels)
+    cls_id=word2index['CLS']
+    print("id of 'CLS':", cls_id)
+    num_examples, FLAGS.max_seq_length = trainX.shape
+    print("num_examples of training:", num_examples, ";max_seq_length:", FLAGS.max_seq_length)
 
     # 2. create model, define train operation
     bert_config = modeling.BertConfig(vocab_size=len(word2index), hidden_size=FLAGS.hidden_size, num_hidden_layers=FLAGS.num_hidden_layers,
@@ -63,7 +68,7 @@ def main(_):
     sess = tf.Session(config=gpu_config)
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-    if os.path.exists(FLAGS.ckpt_dir + "checkpoint"):
+    if os.path.exists(f"{FLAGS.ckpt_dir}checkpoint"):
         print("Checkpoint Exists. Restoring Variables from Checkpoint.")
         saver.restore(sess, tf.train.latest_checkpoint(FLAGS.ckpt_dir))
     number_of_training_data = len(trainX)
@@ -96,7 +101,7 @@ def main(_):
                     epoch, eval_loss, f1_score, f1_micro, f1_macro))
                 # save model to checkpoint
                 #if start % (4000 * FLAGS.batch_size)==0:
-                save_path = FLAGS.ckpt_dir + "model.ckpt"
+                save_path = f"{FLAGS.ckpt_dir}model.ckpt"
                 print("Going to save model..")
                 saver.save(sess, save_path, global_step=epoch)
 
@@ -145,8 +150,8 @@ def do_eval(sess,input_ids,input_mask,segment_ids,label_ids,is_training,loss,pro
     evalution on model using validation data
     """
     num_eval=1000
-    vaildX = vaildX[0:num_eval]
-    vaildY = vaildY[0:num_eval]
+    vaildX = vaildX[:num_eval]
+    vaildY = vaildY[:num_eval]
     number_examples = len(vaildX)
     eval_loss, eval_counter, eval_f1_score, eval_p, eval_r = 0.0, 0, 0.0, 0.0, 0.0
     label_dict = init_label_dict(num_labels)

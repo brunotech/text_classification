@@ -41,7 +41,7 @@ q_lines=q_file.readlines()
 questionid_words_representation={}
 question_representation=[]
 length_desc=30
-for i,line in enumerate(q_lines):
+for line in q_lines:
     #print("line:")
     #print(line)
     element_lists=line.split('\t') #['c324,c39','w305...','c']
@@ -50,13 +50,13 @@ for i,line in enumerate(q_lines):
     #for i,q_e in enumerate(element_lists):
     #    print("e:",q_e)
     #question_representation=[x for x in element_lists[2].split(",")] #+  #TODO this is only for title's word. no more.
-    title_words=[x for x in element_lists[2].strip().split(",")][-length_desc:]
+    title_words = list(element_lists[2].strip().split(","))[-length_desc:]
     #print("title_words:",title_words)
-    title_c=[x for x in element_lists[1].strip().split(",")][-length_desc:]
+    title_c = list(element_lists[1].strip().split(","))[-length_desc:]
     #print("title_c:", title_c)
-    desc_words=[x for x in element_lists[4].strip().split(",")][-length_desc:]
+    desc_words = list(element_lists[4].strip().split(","))[-length_desc:]
     #print("desc_words:", desc_words)
-    desc_c=[x for x in element_lists[3].strip().split(",")][-length_desc:]
+    desc_c = list(element_lists[3].strip().split(","))[-length_desc:]
     #print("desc_c:", desc_c)
     question_representation =title_words+ title_c+desc_words+ desc_c
     question_representation=" ".join(question_representation)
@@ -85,7 +85,7 @@ def split_list(listt):
     list_len = len(listt)
     train_len = 0.95
     valid_len = 0.025
-    train = listt[0:int(list_len * train_len)]
+    train = listt[:int(list_len * train_len)]
     valid = listt[int(list_len * train_len):int(list_len * (train_len + valid_len))]
     test = listt[int(list_len * (train_len + valid_len)):]
     return train, valid, test
@@ -116,7 +116,7 @@ def write_data_to_file_system(file_name, data):
         # print(d)
         question_representation, topic_id = d
         question_representation_ = " ".join(question_representation)
-        file.write(question_representation_ + " __label__" + str(topic_id) + "\n")
+        file.write(f"{question_representation_} __label__{str(topic_id)}" + "\n")
     file.close()
 
 def write_data_to_file_system_multilabel(file_name, data):
@@ -124,7 +124,7 @@ def write_data_to_file_system_multilabel(file_name, data):
     for d in data:
         question_representation, topic_id_list = d
         topic_id_list_=" ".join(topic_id_list)
-        file.write(question_representation + " __label__" + str(topic_id_list_) + "\n")
+        file.write(f"{question_representation} __label__{topic_id_list_}" + "\n")
     file.close()
 
 train_data, valid_data, test_data = split_list(data_list)

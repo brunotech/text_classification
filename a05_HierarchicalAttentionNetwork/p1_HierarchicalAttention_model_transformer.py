@@ -223,10 +223,13 @@ class HierarchicalAttention:
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,
                                                    self.decay_rate, staircase=True)
         self.learning_rate_=learning_rate
-        #noise_std_dev = tf.constant(0.3) / (tf.sqrt(tf.cast(tf.constant(1) + self.global_step, tf.float32))) #gradient_noise_scale=noise_std_dev
-        train_op = tf_contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,
-                                                   learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf_contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     def gru_single_step_word_level(self, Xt, h_t_minus_1):
         """
@@ -243,12 +246,10 @@ class HierarchicalAttention:
                                                                 self.U_r) + self.b_r)  # r_t:[batch_size*num_sentences,self.hidden_size]
         # candiate state h_t~
         h_t_candiate = tf.nn.tanh(tf.matmul(Xt, self.W_h) +r_t * (tf.matmul(h_t_minus_1, self.U_h)) + self.b_h)  # h_t_candiate:[batch_size*num_sentences,self.hidden_size]
-        # new state: a linear combine of pervious hidden state and the current new state h_t~
-        h_t = (1 - z_t) * h_t_minus_1 + z_t * h_t_candiate  # h_t:[batch_size*num_sentences,hidden_size]
-        return h_t
+        return (1 - z_t) * h_t_minus_1 + z_t * h_t_candiate
 
     def gru_single_step_sentence_level(self, Xt,
-                                       h_t_minus_1):  # Xt:[batch_size, hidden_size*2]; h_t:[batch_size, hidden_size*2]
+                                       h_t_minus_1):    # Xt:[batch_size, hidden_size*2]; h_t:[batch_size, hidden_size*2]
         """
         single step of gru for sentence level
         :param Xt:[batch_size, hidden_size*2]
@@ -264,9 +265,7 @@ class HierarchicalAttention:
         # candiate state h_t~
         h_t_candiate = tf.nn.tanh(tf.matmul(Xt, self.W_h_sentence) + r_t * (
             tf.matmul(h_t_minus_1, self.U_h_sentence)) + self.b_h_sentence)  # h_t_candiate:[batch_size,self.hidden_size]
-        # new state: a linear combine of pervious hidden state and the current new state h_t~
-        h_t = (1 - z_t) * h_t_minus_1 + z_t * h_t_candiate
-        return h_t
+        return (1 - z_t) * h_t_minus_1 + z_t * h_t_candiate
 
     # forward gru for first level: word levels
     def gru_forward_word_level(self, embedded_words):
@@ -283,7 +282,7 @@ class HierarchicalAttention:
         h_t = tf.ones((self.batch_size * self.num_sentences,
                        self.hidden_size))  #TODO self.hidden_size h_t =int(tf.get_shape(embedded_words_squeeze[0])[0]) # tf.ones([self.batch_size*self.num_sentences, self.hidden_size]) # [batch_size*num_sentences,embed_size]
         h_t_forward_list = []
-        for time_step, Xt in enumerate(embedded_words_squeeze):  # Xt: [batch_size*num_sentences,embed_size]
+        for Xt in embedded_words_squeeze:
             h_t = self.gru_single_step_word_level(Xt,h_t)  # [batch_size*num_sentences,embed_size]<------Xt:[batch_size*num_sentences,embed_size];h_t:[batch_size*num_sentences,embed_size]
             h_t_forward_list.append(h_t)
         return h_t_forward_list  # a list,length is sentence_length, each element is [batch_size*num_sentences,hidden_size]
@@ -303,7 +302,7 @@ class HierarchicalAttention:
         # demension_1=int(tf.get_shape(embedded_words_squeeze[0])[0]) #h_t = tf.ones([self.batch_size*self.num_sentences, self.hidden_size])
         h_t = tf.ones((self.batch_size * self.num_sentences, self.hidden_size))
         h_t_backward_list = []
-        for time_step, Xt in enumerate(embedded_words_squeeze):
+        for Xt in embedded_words_squeeze:
             h_t = self.gru_single_step_word_level(Xt, h_t)
             h_t_backward_list.append(h_t)
         h_t_backward_list.reverse() #ADD 2017.06.14
@@ -323,7 +322,7 @@ class HierarchicalAttention:
         # demension_1 = int(tf.get_shape(sentence_representation_squeeze[0])[0]) #scalar: batch_size
         h_t = tf.ones((self.batch_size, self.hidden_size * 2))  # TODO
         h_t_forward_list = []
-        for time_step, Xt in enumerate(sentence_representation_squeeze):  # Xt:[batch_size, hidden_size*2]
+        for Xt in sentence_representation_squeeze:
             h_t = self.gru_single_step_sentence_level(Xt,
                                                       h_t)  # h_t:[batch_size,hidden_size]<---------Xt:[batch_size, hidden_size*2]; h_t:[batch_size, hidden_size*2]
             h_t_forward_list.append(h_t)
@@ -344,7 +343,7 @@ class HierarchicalAttention:
         # demension_1 = int(tf.get_shape(sentence_representation_squeeze[0])[0])  # scalar: batch_size
         h_t = tf.ones((self.batch_size, self.hidden_size * 2))
         h_t_forward_list = []
-        for time_step, Xt in enumerate(sentence_representation_squeeze):  # Xt:[batch_size, hidden_size*2]
+        for Xt in sentence_representation_squeeze:
             h_t = self.gru_single_step_sentence_level(Xt,h_t)  # h_t:[batch_size,hidden_size]<---------Xt:[batch_size, hidden_size*2]; h_t:[batch_size, hidden_size*2]
             h_t_forward_list.append(h_t)
         h_t_forward_list.reverse() #ADD 2017.06.14
@@ -356,7 +355,7 @@ class HierarchicalAttention:
         :return:[batch_size,sequence_length,d_model]
         """
         filter=x.get_shape()[-1] #last dimension of x. e.g. 512
-        with tf.variable_scope("layer_normalization"+scope):
+        with tf.variable_scope(f"layer_normalization{scope}"):
             # 1. normalize input by using  mean and variance according to last dimension
             mean=tf.reduce_mean(x,axis=-1,keep_dims=True) #[batch_size,sequence_length,1]
             variance=tf.reduce_mean(tf.square(x-mean),axis=-1,keep_dims=True) #[batch_size,sequence_length,1]
@@ -364,8 +363,7 @@ class HierarchicalAttention:
             # 2. re-scale normalized input back
             scale=tf.get_variable("layer_norm_scale",[filter],initializer=tf.ones_initializer) #[filter]
             bias=tf.get_variable("layer_norm_bias",[filter],initializer=tf.ones_initializer) #[filter]
-            output=norm_x*scale+bias #[batch_size,sequence_length,d_model]
-            return output #[batch_size,sequence_length,d_model]
+            return norm_x*scale+bias
     def instantiate_weights(self):
         """define all weights here"""
         with tf.name_scope("embedding_projection"):  # embedding matrix
@@ -459,7 +457,7 @@ def test():
             # print("W_projection_value_:",W_projection_value)
 
 def get_input_y(i,input_x,batch_size):
-    input_y = [0 for j in range(batch_size)]
+    input_y = [0 for _ in range(batch_size)]
     for k in range(batch_size):
         input_sum = np.sum(input_x[k])
         #print(i, "input_sum:", input_sum)

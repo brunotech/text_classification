@@ -70,14 +70,15 @@ def main(_):
         model=Transformer(FLAGS.num_classes, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.decay_steps, FLAGS.decay_rate, FLAGS.sequence_length,
                  vocab_size, FLAGS.embed_size,FLAGS.d_model,FLAGS.d_k,FLAGS.d_v,FLAGS.h,FLAGS.num_layer,FLAGS.is_training,l2_lambda=FLAGS.l2_lambda)
         saver=tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir}checkpoint"):
             print("Restoring Variables from Checkpoint")
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.ckpt_dir))
         else:
             print("Can't find the checkpoint.going to stop")
             return
         # 5.feed data, to get logits
-        number_of_training_data=len(testX2);print("number_of_training_data:",number_of_training_data)
+        number_of_training_data=len(testX2)
+        print("number_of_training_data:",number_of_training_data)
         index=0
         predict_target_file_f = codecs.open(FLAGS.predict_target_file, 'a', 'utf8')
         for start, end in zip(range(0, number_of_training_data, FLAGS.batch_size),range(FLAGS.batch_size, number_of_training_data+1, FLAGS.batch_size)):
@@ -115,11 +116,7 @@ def get_label_using_logits_batch(question_id_sublist, logits_batch, vocabulary_i
 def get_label_using_logits(logits,vocabulary_index2word_label,top_number=5):
     index_list=np.argsort(logits)[-top_number:] #a list.length is top_number
     index_list=index_list[::-1] ##a list.length is top_number
-    label_list=[]
-    for index in index_list:
-        label=vocabulary_index2word_label[index]
-        label_list.append(label) #('get_label_using_logits.label_list:', [u'-3423450385060590478', u'2838091149470021485', u'-3174907002942471215', u'-1812694399780494968', u'6815248286057533876'])
-    return label_list
+    return [vocabulary_index2word_label[index] for index in index_list]
 
 def process_each_row_get_lable(row,vocabulary_index2word_label,vocabulary_word2index_label,result_list):
     """
@@ -131,7 +128,7 @@ def process_each_row_get_lable(row,vocabulary_index2word_label,vocabulary_word2i
     label_list=list(np.argsort(row))
     label_list.reverse()
     #print("label_list:",label_list) # a list,length is number of labels.
-    for i,index in enumerate(label_list): # if index is not exists, and not _PAD,_END, then it is the label we want.
+    for index in label_list:
         #print(i,"index:",index)
         flag1=vocabulary_index2word_label[index] not in result_list
         flag2=index!=vocabulary_word2index_label[_PAD]
@@ -143,7 +140,7 @@ def process_each_row_get_lable(row,vocabulary_index2word_label,vocabulary_word2i
 # write question id and labels to file system.
 def write_question_id_with_labels(question_id,labels_list,f):
     labels_string=",".join(labels_list)
-    f.write(question_id+","+labels_string+"\n")
+    f.write(f"{question_id},{labels_string}" + "\n")
 
 if __name__ == "__main__":
     tf.app.run()

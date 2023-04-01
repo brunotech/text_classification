@@ -54,8 +54,7 @@ class PositionWiseFeedFoward(object): #TODO make it parallel
             output_conv1,filters=self.d_model,kernel_size=[1,self.d_ff],padding="VALID",
             name='conv2',kernel_initializer=self.initializer,activation=None
         )
-        output=tf.squeeze(output_conv2) #[batch,sequence_length,d_model]
-        return output #[batch,sequence_length,d_model]
+        return tf.squeeze(output_conv2)
 
 #test function of position_wise_feed_forward_fn
 #time spent:OLD VERSION: length=8000,time spent:35.6s; NEW VERSION:0.03s

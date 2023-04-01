@@ -15,17 +15,23 @@ model = tflearn.DNN(net) #deep Neural Network Model
 
 # invoke method with some data--------------------------------------------------------------------
 def convert_int_to_one_hot(number,label_size):
-    listt=[0 for x in range(label_size)]
+    listt = [0 for _ in range(label_size)]
     listt[number]=1
     return listt
 
 batch_size=32
 X=np.random.randn(batch_size,784)
-y_=[convert_int_to_one_hot(np.random.choice(class_number),class_number) for xx in range(batch_size)]
+y_ = [
+    convert_int_to_one_hot(np.random.choice(class_number), class_number)
+    for _ in range(batch_size)
+]
 y=np.array(y_)
 
 X_test=np.random.randn(batch_size,784)
-y_2=[convert_int_to_one_hot(np.random.choice(class_number),class_number) for xx in range(batch_size)]
+y_2 = [
+    convert_int_to_one_hot(np.random.choice(class_number), class_number)
+    for _ in range(batch_size)
+]
 Y_test=np.array(y_2)
 model.fit(X, y,validation_set=(X_test, Y_test),show_metric=True)
 #-------------------------------------------------------------------------------------------------

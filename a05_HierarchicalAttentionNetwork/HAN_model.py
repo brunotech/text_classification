@@ -61,7 +61,7 @@ class HierarchicalAttention:
         for i in range(self.num_sentences):
             sentence=embedded_words[i]
             #sentence is:[batch_size,seqence_length,embed_size]
-            resue_flag=True if i>0 else False
+            resue_flag = i > 0
             # 2. word encoder
             num_units1=self.embed_size
             sentence=tf.reshape(sentence,(-1,self.sequence_length,num_units1))
@@ -105,8 +105,12 @@ class HierarchicalAttention:
         :return: [batch_size,hidden_size]
         """
         num_units=input_sequences.get_shape().as_list()[-1] #get last dimension
-        with tf.variable_scope("attention_" + str(attention_level),reuse=reuse_flag):
-            v_attention = tf.get_variable("u_attention" + attention_level, shape=[num_units],initializer=self.initializer)
+        with tf.variable_scope(f"attention_{str(attention_level)}", reuse=reuse_flag):
+            v_attention = tf.get_variable(
+                f"u_attention{attention_level}",
+                shape=[num_units],
+                initializer=self.initializer,
+            )
             #1.one-layer MLP
             u=tf.layers.dense(input_sequences,num_units,activation=tf.nn.tanh,use_bias=True) #[batch_size,seq_legnth,num_units].no-linear
             #2.compute weight by compute simility of u and attention vector v
@@ -124,13 +128,11 @@ class HierarchicalAttention:
         :return: encoded representation:[batch_size,seq_lenght,num_units*2]
         """
         #num_units=input_sequences.get_shape().as_list()[-1] #get last dimension
-        with tf.variable_scope("bi_lstm_" + str(level), reuse=reuse_flag):
+        with tf.variable_scope(f"bi_lstm_{str(level)}", reuse=reuse_flag):
             lstm_fw_cell = rnn.BasicLSTMCell(num_units)  # forward direction cell
             lstm_bw_cell = rnn.BasicLSTMCell(num_units)  # backward direction cell
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(lstm_fw_cell, lstm_bw_cell, input_sequences,dtype=tf.float32)  # [batch_size,sequence_length,hidden_size] #creates a dynamic bidirectional recurrent neural network
-        #concat output
-        encdoded_inputs = tf.concat(outputs, axis=2)  #[batch_size,sequence_length,hidden_size*2]
-        return encdoded_inputs  #[batch_size,sequence_length,num_units*2]
+        return tf.concat(outputs, axis=2)
 
     def loss(self,l2_lambda=0.0001):
         # input: `logits` and `labels` must have the same shape `[batch_size, num_classes]`
@@ -162,19 +164,27 @@ class HierarchicalAttention:
         self.weights_deathpenalty = tf.nn.sigmoid(tf.cast(self.global_step / 1000, dtype=tf.float32)) / 9.0   #0--1/9
         self.weights_lifeimprisonment = tf.nn.sigmoid(tf.cast(self.global_step / 1000, dtype=tf.float32)) / 9.0 #0--1/9
         self.weights_imprisonment=1-(self.weights_accusation+self.weights_article+self.weights_deathpenalty+self.weights_lifeimprisonment) #0-1/9
-        loss = self.weights_accusation*loss_accusation+self.weights_article*loss_article+self.weights_deathpenalty*loss_deathpenalty +\
-               self.weights_lifeimprisonment*loss_lifeimprisonment+self.weights_imprisonment*loss_imprisonment+l2_lambda*l2_losses
-        return loss
+        return (
+            self.weights_accusation * loss_accusation
+            + self.weights_article * loss_article
+            + self.weights_deathpenalty * loss_deathpenalty
+            + self.weights_lifeimprisonment * loss_lifeimprisonment
+            + self.weights_imprisonment * loss_imprisonment
+            + l2_lambda * l2_losses
+        )
 
     def train(self):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,
                                                    self.decay_rate, staircase=True)
         self.learning_rate_=learning_rate
-        #noise_std_dev = tf.constant(0.3) / (tf.sqrt(tf.cast(tf.constant(1) + self.global_step, tf.float32))) #gradient_noise_scale=noise_std_dev
-        train_op = tf_contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,
-                                                   learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf_contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     def instantiate_weights(self):
         """define all weights here"""
@@ -202,7 +212,7 @@ def test():
                                     hidden_size, is_training,multi_label_flag=False)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(100):
+        for _ in range(100):
             # input_x should be:[batch_size, num_sentences,self.sequence_length]
             input_x = np.zeros((batch_size, sequence_length)) #num_sentences
             input_x[input_x > 0.5] = 1

@@ -68,17 +68,16 @@ class seq2seq_attention_model:
         cell=self.gru_cell_decoder #this is a special cell. because it beside previous hidden state, current input, it also has a context vecotor, which represent attention result.
 
         output_projection=(self.W_projection,self.b_projection) #W_projection:[self.hidden_size * 2, self.num_classes]; b_projection:[self.num_classes]
-        loop_function = extract_argmax_and_embed(self.Embedding_label,output_projection) if not self.is_training else None #loop function will be used only at testing, not training.
+        loop_function = (
+            None
+            if self.is_training
+            else extract_argmax_and_embed(self.Embedding_label, output_projection)
+        )
         attention_states=thought_vector #[None, self.sequence_length, self.embed_size]
         decoder_input_embedded=tf.nn.embedding_lookup(self.Embedding_label,self.decoder_input) #[batch_size,self.decoder_sent_length,embed_size]
         decoder_input_splitted = tf.split(decoder_input_embedded, self.decoder_sent_length,axis=1)  # it is a list,length is decoder_sent_length, each element is [batch_size,1,embed_size]
         decoder_input_squeezed = [tf.squeeze(x, axis=1) for x in decoder_input_splitted]  # it is a list,length is decoder_sent_length, each element is [batch_size,embed_size]
 
-        #rnn_decoder_with_attention(decoder_inputs, initial_state, cell, loop_function,attention_states,scope=None):
-            #input1:decoder_inputs:target, shift by one. for example.the target is:"X Y Z",then decoder_inputs should be:"START X Y Z" A list of 2D Tensors [batch_size x input_size].
-            #input2:initial_state: 2D Tensor with shape  [batch_size x cell.state_size].
-            #input3:attention_states:represent X. 3D Tensor [batch_size x attn_length x attn_size].
-            #output:?
         outputs, final_state=rnn_decoder_with_attention(decoder_input_squeezed, initial_state, cell, loop_function, attention_states, scope=None) # A list.length:decoder_sent_length.each element is:[batch_size x output_size]
         decoder_output=tf.stack(outputs,axis=1) #decoder_output:[batch_size,decoder_sent_length,hidden_size*2]
         decoder_output=tf.reshape(decoder_output,shape=(-1,self.hidden_size*2)) #decoder_output:[batch_size*decoder_sent_length,hidden_size*2]
@@ -107,10 +106,13 @@ class seq2seq_attention_model:
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
         self.learning_rate_=learning_rate
-        #noise_std_dev = tf.constant(0.3) / (tf.sqrt(tf.cast(tf.constant(1) + self.global_step, tf.float32))) #gradient_noise_scale=noise_std_dev
-        train_op = tf_contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,
-                                                   learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf_contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     def gru_cell(self, Xt, h_t_minus_1):
         """
@@ -125,9 +127,7 @@ class seq2seq_attention_model:
         r_t = tf.nn.sigmoid(tf.matmul(Xt, self.W_r) + tf.matmul(h_t_minus_1,self.U_r) + self.b_r)  # r_t:[batch_size,self.hidden_size]
         # candiate state h_t~
         h_t_candiate = tf.nn.tanh(tf.matmul(Xt, self.W_h) +r_t * (tf.matmul(h_t_minus_1, self.U_h)) + self.b_h)  # h_t_candiate:[batch_size,self.hidden_size]
-        # new state: a linear combine of pervious hidden state and the current new state h_t~
-        h_t = (1 - z_t) * h_t_minus_1 + z_t * h_t_candiate  # h_t:[batch_size*num_sentences,hidden_size]
-        return h_t
+        return (1 - z_t) * h_t_minus_1 + z_t * h_t_candiate
 
     def gru_cell_decoder(self, Xt, h_t_minus_1,context_vector):
         """
@@ -160,7 +160,7 @@ class seq2seq_attention_model:
         h_t_list = []
         if reverse:
             embedded_words_squeeze.reverse()
-        for time_step, Xt in enumerate(embedded_words_squeeze):  # Xt: [batch_size,embed_size]
+        for Xt in embedded_words_squeeze:
             h_t = gru_cell(Xt,h_t) #h_t:[batch_size,embed_size]<------Xt:[batch_size,embed_size];h_t:[batch_size,embed_size]
             h_t_list.append(h_t)
         if reverse:

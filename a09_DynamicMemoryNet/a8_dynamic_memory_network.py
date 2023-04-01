@@ -79,9 +79,7 @@ class DynamicMemoryNetwork:
         self.question_module() #[batch_size,hidden_size]
         # 3.episodic memory module
         self.episodic_memory_module() #[batch_size,hidden_size]
-        # 4. answer module
-        logits=self.answer_module() #[batch_size,vocab_size]
-        return logits
+        return self.answer_module()
 
     def input_module(self):
         """encode raw texts into vector representation"""
@@ -148,18 +146,17 @@ class DynamicMemoryNetwork:
         y_pred=tf.zeros((self.batch_size,self.hidden_size)) #TODO usually we will init this as a special token '<GO>', you can change this line by pass embedding of '<GO>' from outside.
         logits_list=[]
         logits_return=None
-        for i in range(steps):
+        for _ in range(steps):
             cell = rnn.GRUCell(self.hidden_size)
             y_previous_q=tf.concat([y_pred,self.query_embedding],axis=1) #[batch_hidden_size*2]
             _, a = cell( y_previous_q,a)
             logits=tf.layers.dense(a,units=self.num_classes) #[batch_size,vocab_size]
             logits_list.append(logits)
-        if self.decode_with_sequences:#need to get sequences.
-            logits_return = tf.stack(logits_list, axis=1)  # [batch_size,sequence_length,num_classes]
-        else:#only need to get an answer, not sequences
-            logits_return = logits_list[0]  #[batcj_size,num_classes]
-
-        return logits_return
+        return (
+            tf.stack(logits_list, axis=1)
+            if self.decode_with_sequences
+            else logits_list[0]
+        )
     def gated_gru(self,c_current,h_previous,g_current):
         """
         gated gru to get updated hidden state
@@ -170,9 +167,7 @@ class DynamicMemoryNetwork:
         """
         # 1.compute candidate hidden state using GRU.
         h_candidate=self.gru_cell(c_current, h_previous,"gru_candidate_sentence") #[batch_size,hidden_size]
-        # 2.combine candidate hidden state and previous hidden state using weight(a gate) to get updated hidden state.
-        h_current=tf.multiply(g_current,h_candidate)+tf.multiply(1-g_current,h_previous) #[batch_size,hidden_size]
-        return h_current
+        return tf.multiply(g_current,h_candidate)+tf.multiply(1-g_current,h_previous)
 
     def attention_mechanism_parallel(self,c_full,m,q,i):
         """ parallel implemtation of gate function given a list of candidate sentence, a query, and previous memory.
@@ -191,8 +186,8 @@ class DynamicMemoryNetwork:
         c_q_minus=tf.abs(tf.subtract(c_full,q))        #[batch_size,story_length,hidden_size]
         c_m_minus=tf.abs(tf.subtract(c_full,m))        #[batch_size,story_length,hidden_size]
         # c_transpose Wq
-        c_w_q=self.x1Wx2_parallel(c_full,q,"c_w_q"+str(i))   #[batch_size,story_length,hidden_size]
-        c_w_m=self.x1Wx2_parallel(c_full,m,"c_w_m"+str(i))   #[batch_size,story_length,hidden_size]
+        c_w_q = self.x1Wx2_parallel(c_full, q, f"c_w_q{str(i)}")
+        c_w_m = self.x1Wx2_parallel(c_full, m, f"c_w_m{str(i)}")
         # c_transposeWm
         q_tile=tf.tile(q,[1,self.story_length,1])     #[batch_size,story_length,hidden_size]
         m_tile=tf.tile(m,[1,self.story_length,1])     #[batch_size,story_length,hidden_size]
@@ -283,9 +278,13 @@ class DynamicMemoryNetwork:
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,
                                                    self.decay_rate, staircase=True)
         self.learning_rate_=learning_rate
-        #noise_std_dev = tf.constant(0.3) / (tf.sqrt(tf.cast(tf.constant(1) + self.global_step, tf.float32))) #gradient_noise_scale=noise_std_dev
-        train_op = tf_contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf_contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     #:param s_t: vector representation of current input(is a sentence). shape:[batch_size,sequence_length,embed_size]
     #:param h: value(hidden state).shape:[hidden_size]
@@ -350,7 +349,7 @@ def train():
             print(i, "query:", query, "=====================>")
             print(i, "loss:", loss, "acc:", acc, "label:", answer_single, "prediction:", predict)
             if i % 300 == 0:
-                save_path = ckpt_dir + "model.ckpt"
+                save_path = f"{ckpt_dir}model.ckpt"
                 saver.save(sess, save_path, global_step=i * 300)
 
 def predict():

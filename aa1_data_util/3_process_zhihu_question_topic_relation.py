@@ -38,7 +38,7 @@ q_lines=q_file.readlines()
 questionid_words_representation={}
 question_representation=[]
 length_desc=30
-for i,line in enumerate(q_lines):
+for line in q_lines:
     #print("line:")
     #print(line)
     element_lists=line.split('\t') #['c324,c39','w305...','c']
@@ -46,7 +46,7 @@ for i,line in enumerate(q_lines):
     #print("question_id:",element_lists[0])
     #for i,q_e in enumerate(element_lists):
     #    print("e:",q_e)
-    question_representation=[x for x in element_lists[2].split(",")] #+ \
+    question_representation = list(element_lists[2].split(","))
     #[x for x in element_lists[1].split(",")]+ \
     #[x for x in element_lists[4][-length_desc:].split(",")] + \
     #[x for x in element_lists[3][-length_desc*2:].split(",")] #character:字
@@ -63,7 +63,7 @@ def read_topic_info():
     f = codecs.open(topic_info_file_path, 'r', 'utf8')
     lines=f.readlines()
     dict_questionid_title={}
-    for i,line in enumerate(lines):
+    for line in lines:
         topic_id,partent_ids,title_character,title_words,desc_character,decs_words=line.split("\t")
         # print(i,"------------------------------------------------------")
         # print("topic_id:",topic_id)
@@ -73,10 +73,13 @@ def read_topic_info():
         # print("desc_character:",desc_character)
         # print("decs_words:",decs_words)
         decs_words=decs_words.strip()
-        decs_words = decs_words.strip().split(",");decs_words = " ".join(decs_words)
+        decs_words = decs_words.strip().split(",")
+        decs_words = " ".join(decs_words)
 
-        title_words=title_words.strip().split(",");title_words=title_words[0:30];title_words=" ".join(title_words);
-        dict_questionid_title[topic_id]=title_words+" "+decs_words
+        title_words=title_words.strip().split(",")
+        title_words = title_words[:30]
+        title_words=" ".join(title_words);
+        dict_questionid_title[topic_id] = f"{title_words} {decs_words}"
     print("len(dict_questionid_title):",len(dict_questionid_title))
     return dict_questionid_title
 dict_questionid_title=read_topic_info()
@@ -100,7 +103,7 @@ def split_list(listt):
     list_len = len(listt)
     train_len = 0.9
     valid_len = 0.05
-    train = listt[0:int(list_len * train_len)]
+    train = listt[:int(list_len * train_len)]
     valid = listt[int(list_len * train_len):int(list_len * (train_len + valid_len))]
     test = listt[int(list_len * (train_len + valid_len)):]
     return train, valid, test

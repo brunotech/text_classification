@@ -47,14 +47,17 @@ def main(_):
     #trainX, trainY, testX, testY = None, None, None, None
     #vocabulary_word2index, vocabulary_index2word, vocabulary_label2index, _= create_vocabulary(FLAGS.traning_data_path,FLAGS.vocab_size,name_scope=FLAGS.name_scope)
     word2index, label2index, trainX, trainY, vaildX, vaildY, testX, testY=load_data(FLAGS.cache_file_h5py, FLAGS.cache_file_pickle)
-    vocab_size = len(word2index);print("cnn_model.vocab_size:",vocab_size);num_classes=len(label2index);print("num_classes:",num_classes)
+    vocab_size = len(word2index)
+    print("cnn_model.vocab_size:",vocab_size)
+    num_classes=len(label2index)
+    print("num_classes:",num_classes)
     num_examples,FLAGS.sentence_len=trainX.shape
     print("num_examples of training:",num_examples,";sentence_len:",FLAGS.sentence_len)
     #train, test= load_data_multilabel(FLAGS.traning_data_path,vocabulary_word2index, vocabulary_label2index,FLAGS.sentence_len)
     #trainX, trainY = train;testX, testY = test
     #print some message for debug purpose
-    print("trainX[0:10]:", trainX[0:10])
-    print("trainY[0]:", trainY[0:10])
+    print("trainX[0:10]:", trainX[:10])
+    print("trainY[0]:", trainY[:10])
     print("train_y_short:", trainY[0])
 
     #2.create session.
@@ -66,7 +69,7 @@ def main(_):
                         FLAGS.decay_rate,FLAGS.sentence_len,vocab_size,FLAGS.embed_size,multi_label_flag=FLAGS.multi_label_flag)
         #Initialize Save
         saver=tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir}checkpoint"):
             print("Restoring Variables from Checkpoint.")
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.ckpt_dir))
             #for i in range(3): #decay learning rate if necessary.
@@ -104,10 +107,10 @@ def main(_):
                     eval_loss, f1_score,f1_micro,f1_macro = do_eval(sess, textCNN, vaildX, vaildY,num_classes)
                     print("Epoch %d Validation Loss:%.3f\tF1 Score:%.3f\tF1_micro:%.3f\tF1_macro:%.3f" % (epoch, eval_loss, f1_score,f1_micro,f1_macro))
                     # save model to checkpoint
-                    save_path = FLAGS.ckpt_dir + "model.ckpt"
+                    save_path = f"{FLAGS.ckpt_dir}model.ckpt"
                     print("Going to save model..")
                     saver.save(sess, save_path, global_step=epoch)
-                ########################################################################################################
+                            ########################################################################################################
             #epoch increment
             print("going to increment epoch counter....")
             sess.run(textCNN.epoch_increment)
@@ -118,19 +121,18 @@ def main(_):
                 eval_loss,f1_score,f1_micro,f1_macro=do_eval(sess,textCNN,testX,testY,num_classes)
                 print("Epoch %d Validation Loss:%.3f\tF1 Score:%.3f\tF1_micro:%.3f\tF1_macro:%.3f" % (epoch,eval_loss,f1_score,f1_micro,f1_macro))
                 #save model to checkpoint
-                save_path=FLAGS.ckpt_dir+"model.ckpt"
+                save_path = f"{FLAGS.ckpt_dir}model.ckpt"
                 saver.save(sess,save_path,global_step=epoch)
 
         # 5.最后在测试集上做测试，并报告测试准确率 Test
         test_loss,f1_score,f1_micro,f1_macro = do_eval(sess, textCNN, testX, testY,num_classes)
         print("Test Loss:%.3f\tF1 Score:%.3f\tF1_micro:%.3f\tF1_macro:%.3f" % ( test_loss,f1_score,f1_micro,f1_macro))
-    pass
 
 
 # 在验证集上做验证，报告损失、精确度
 def do_eval(sess, textCNN, evalX, evalY, num_classes):
-    evalX = evalX[0:3000]
-    evalY = evalY[0:3000]
+    evalX = evalX[:3000]
+    evalY = evalY[:3000]
     number_examples = len(evalX)
     eval_loss, eval_counter, eval_f1_score, eval_p, eval_r = 0.0, 0, 0.0, 0.0, 0.0
     batch_size = 1
@@ -191,9 +193,7 @@ def assign_pretrained_word_embedding(sess,vocabulary_index2word,vocab_size,textC
     import word2vec # we put import here so that many people who do not use word2vec do not need to install this package. you can move import to the beginning of this file.
     print("using pre-trained word emebedding.started.word2vec_model_path:",word2vec_model_path)
     word2vec_model = word2vec.load(word2vec_model_path, kind='bin')
-    word2vec_dict = {}
-    for word, vector in zip(word2vec_model.vocab, word2vec_model.vectors):
-        word2vec_dict[word] = vector
+    word2vec_dict = dict(zip(word2vec_model.vocab, word2vec_model.vectors))
     word_embedding_2dlist = [[]] * vocab_size  # create an empty word_embedding list.
     word_embedding_2dlist[0] = np.zeros(FLAGS.embed_size)  # assign empty for first word:'PAD'
     bound = np.sqrt(6.0) / np.sqrt(vocab_size)  # bound for random variables.

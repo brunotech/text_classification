@@ -27,19 +27,19 @@ class BaseClass(object):
         self.type=type
         self.decoder_sent_length=decoder_sent_length
 
-    def sub_layer_postion_wise_feed_forward(self ,x ,layer_index,type)  :# COMMON FUNCTION
+    def sub_layer_postion_wise_feed_forward(self ,x ,layer_index,type):    # COMMON FUNCTION
         """
         :param x: shape should be:[batch_size,sequence_length,d_model]
         :param layer_index: index of layer number
         :param type: encoder,decoder or encoder_decoder_attention
         :return: [batch_size,sequence_length,d_model]
         """
-        with tf.variable_scope("sub_layer_postion_wise_feed_forward" + type + str(layer_index)):
+        with tf.variable_scope(f"sub_layer_postion_wise_feed_forward{type}{str(layer_index)}"):
             postion_wise_feed_forward = PositionWiseFeedFoward(x, layer_index)
             postion_wise_feed_forward_output = postion_wise_feed_forward.position_wise_feed_forward_fn()
         return postion_wise_feed_forward_output
 
-    def sub_layer_multi_head_attention(self ,layer_index ,Q ,K_s,type,mask=None,is_training=None,dropout_keep_prob=None)  :# COMMON FUNCTION
+    def sub_layer_multi_head_attention(self ,layer_index ,Q ,K_s,type,mask=None,is_training=None,dropout_keep_prob=None):    # COMMON FUNCTION
         """
         multi head attention as sub layer
         :param layer_index: index of layer number
@@ -49,7 +49,7 @@ class BaseClass(object):
         :param mask: when use mask,illegal connection will be mask as huge big negative value.so it's possiblitity will become zero.
         :return: output of multi head attention.shape:[batch_size,sequence_length,d_model]
         """
-        with tf.variable_scope("base_mode_sub_layer_multi_head_attention_" + type+str(layer_index)):
+        with tf.variable_scope(f"base_mode_sub_layer_multi_head_attention_{type}{str(layer_index)}"):
             # below is to handle attention for encoder and decoder with difference length:
             #length=self.decoder_sent_length if (type!='encoder' and self.sequence_length!=self.decoder_sent_length) else self.sequence_length #TODO this may be useful
             length=self.sequence_length
@@ -62,7 +62,7 @@ class BaseClass(object):
             sub_layer_multi_head_attention_output = multi_head_attention_class.multi_head_attention_fn()  # [batch_size*sequence_length,d_model]
         return sub_layer_multi_head_attention_output  # [batch_size,sequence_length,d_model]
 
-    def sub_layer_layer_norm_residual_connection(self,layer_input ,layer_output,layer_index,type,dropout_keep_prob=None,use_residual_conn=True): # COMMON FUNCTION
+    def sub_layer_layer_norm_residual_connection(self,layer_input ,layer_output,layer_index,type,dropout_keep_prob=None,use_residual_conn=True):    # COMMON FUNCTION
         """
         layer norm & residual connection
         :param input: [batch_size,equence_length,d_model]
@@ -73,5 +73,4 @@ class BaseClass(object):
         #assert layer_input.get_shape().as_list()==layer_output.get_shape().as_list()
         #layer_output_new= layer_input+ layer_output
         layer_norm_residual_conn=LayerNormResidualConnection(layer_input,layer_output,layer_index,type,residual_dropout=(1-dropout_keep_prob),use_residual_conn=use_residual_conn)
-        output = layer_norm_residual_conn.layer_norm_residual_connection()
-        return output  # [batch_size,sequence_length,d_model]
+        return layer_norm_residual_conn.layer_norm_residual_connection()

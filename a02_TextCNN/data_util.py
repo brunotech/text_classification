@@ -43,7 +43,7 @@ def load_data_multilabel(traning_data_path,vocab_word2index, vocab_label2index,s
     X = pad_sequences(X, maxlen=sentence_len, value=0.)  # padding to max length
     number_examples = len(lines)
     training_number=int(training_portion* number_examples)
-    train = (X[0:training_number], Y[0:training_number])
+    train = X[:training_number], Y[:training_number]
     valid_number=min(1000,number_examples-training_number)
     test = (X[training_number+ 1:training_number+valid_number+1], Y[training_number + 1:training_number+valid_number+1])
     return train,test
@@ -76,16 +76,14 @@ def create_vocabulary(training_data_path,vocab_size,name_scope='cnn'):
         os.makedirs(cache_vocabulary_label_pik)
 
     # if cache exists. load it; otherwise create it.
-    cache_path =cache_vocabulary_label_pik+"/"+'vocab_label.pik'
+    cache_path = f"{cache_vocabulary_label_pik}/vocab_label.pik"
     print("cache_path:",cache_path,"file_exists:",os.path.exists(cache_path))
     if os.path.exists(cache_path):
         with open(cache_path, 'rb') as data_f:
             return pickle.load(data_f)
     else:
-        vocabulary_word2index={}
-        vocabulary_index2word={}
-        vocabulary_word2index[_PAD]=PAD_ID
-        vocabulary_index2word[PAD_ID]=_PAD
+        vocabulary_word2index = {_PAD: PAD_ID}
+        vocabulary_index2word = {PAD_ID: _PAD}
         vocabulary_word2index[_UNK]=UNK_ID
         vocabulary_index2word[UNK_ID]=_UNK
 

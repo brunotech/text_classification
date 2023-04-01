@@ -36,7 +36,7 @@ def bert_train_fn():
     gpu_config.gpu_options.allow_growth = True
     sess = tf.Session(config=gpu_config)
     sess.run(tf.global_variables_initializer())
-    for i in range(1000):
+    for _ in range(1000):
         input_ids_=np.ones((batch_size,max_seq_length),dtype=np.int32)
         input_mask_=np.ones((batch_size,max_seq_length),dtype=np.int32)
         segment_ids_=np.ones((batch_size,max_seq_length),dtype=np.int32)

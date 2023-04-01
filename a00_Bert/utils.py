@@ -82,8 +82,8 @@ def compute_confuse_matrix(target_y,predict_y,label_dict,name='default'):
     :return: macro_f1(a scalar),micro_f1(a scalar)
     """
     #1.get target label and predict label
-    if random.choice([x for x in range(random_number)]) ==1:
-        print(name+".target_y:",target_y,";predict_y:",predict_y) #debug purpose
+    if random.choice(list(range(random_number))) == 1:
+        print(f"{name}.target_y:", target_y, ";predict_y:", predict_y)
 
     #2.count number of TP,FP,FN for each class
     y_labels_unique=[]
@@ -94,9 +94,9 @@ def compute_confuse_matrix(target_y,predict_y,label_dict,name='default'):
         TP, FP, FN = label_dict[label]
         if label in predict_y and label in target_y:#predict=1,truth=1 (TP)
             TP=TP+1
-        elif label in predict_y and label not in target_y:#predict=1,truth=0(FP)
+        elif label in predict_y:#predict=1,truth=0(FP)
             FP=FP+1
-        elif label not in predict_y and label in target_y:#predict=0,truth=1(FN)
+        elif label in target_y:#predict=0,truth=1(FN)
             FN=FN+1
         label_dict[label] = (TP, FP, FN)
     return label_dict
@@ -131,8 +131,9 @@ def compute_f1_micro_use_TFFPFN(label_dict):
     :return: f1_micro: a scalar
     """
     TF_micro_accusation, FP_micro_accusation, FN_micro_accusation =compute_TF_FP_FN_micro(label_dict)
-    f1_micro_accusation = compute_f1(TF_micro_accusation, FP_micro_accusation, FN_micro_accusation,'micro')
-    return f1_micro_accusation
+    return compute_f1(
+        TF_micro_accusation, FP_micro_accusation, FN_micro_accusation, 'micro'
+    )
 
 def compute_f1_macro_use_TFFPFN(label_dict):
     """
@@ -147,8 +148,7 @@ def compute_f1_macro_use_TFFPFN(label_dict):
         f1_score_onelabel=compute_f1(TP,FP,FN,'macro')
         f1_dict[label]=f1_score_onelabel
     f1_score_sum=np.sum(f1_dict.values())
-    f1_score=f1_score_sum/float(num_classes)
-    return f1_score
+    return f1_score_sum/float(num_classes)
 
 small_value=0.00001
 def compute_f1(TP,FP,FN,compute_type):
@@ -163,7 +163,16 @@ def compute_f1(TP,FP,FN,compute_type):
     recall=TP/(TP+FN+small_value)
     f1_score=(2*precison*recall)/(precison+recall+small_value)
 
-    if random.choice([x for x in range(500)]) == 1:print(compute_type,"precison:",str(precison),";recall:",str(recall),";f1_score:",f1_score)
+    if random.choice(list(range(500))) == 1:
+        print(
+            compute_type,
+            "precison:",
+            precison,
+            ";recall:",
+            recall,
+            ";f1_score:",
+            f1_score,
+        )
 
     return f1_score
 def init_label_dict(num_classes):
@@ -172,25 +181,15 @@ def init_label_dict(num_classes):
     :param num_classes:
     :return: label_dict: a dict. {label_index:(0,0,0)}
     """
-    label_dict={}
-    for i in range(num_classes):
-        label_dict[i]=(0,0,0)
-    return label_dict
+    return {i: (0,0,0) for i in range(num_classes)}
 
 def get_target_label_short(eval_y):
-    eval_y_short=[] #will be like:[22,642,1391]
-    for index,label in enumerate(eval_y):
-        if label>0:
-            eval_y_short.append(index)
-    return eval_y_short
+    return [index for index, label in enumerate(eval_y) if label>0]
 
 def get_target_label_short_batch(eval_y_big): # tested.
     eval_y_short_big=[] #will be like:[22,642,1391]
-    for ind, eval_y in enumerate(eval_y_big):
-        eval_y_short=[]
-        for index,label in enumerate(eval_y):
-            if label>0:
-                eval_y_short.append(index)
+    for eval_y in eval_y_big:
+        eval_y_short = [index for index, label in enumerate(eval_y) if label>0]
         eval_y_short_big.append(eval_y_short)
     return eval_y_short_big
 
@@ -205,10 +204,7 @@ def get_target_label_short_batch(eval_y_big): # tested.
 
 #get top5 predicted labels
 def get_label_using_prob(prob,top_number=5):
-    y_predict_labels = [i for i in range(len(prob)) if prob[i] >= 0.50]  # TODO 0.5PW e.g.[2,12,13,10]
-    if len(y_predict_labels) < 1:
-        y_predict_labels = [np.argmax(prob)]
-    return y_predict_labels
+    return [i for i in range(len(prob)) if prob[i] >= 0.50] or [np.argmax(prob)]
 
 def get_label_using_logits_batch(prob,top_number=5): # tested.
     result_labels=[]
@@ -220,20 +216,17 @@ def get_label_using_logits_batch(prob,top_number=5): # tested.
 
 #统计预测的准确率
 def calculate_accuracy(labels_predicted, labels,eval_counter):
-    label_nozero=[]
     #print("labels:",labels)
     labels=list(labels)
-    for index,label in enumerate(labels):
-        if label>0:
-            label_nozero.append(index)
+    label_nozero = [index for index, label in enumerate(labels) if label>0]
     if eval_counter<2:
         print("labels_predicted:",labels_predicted," ;labels_nozero:",label_nozero)
     count = 0
     label_dict = {x: x for x in label_nozero}
     for label_predict in labels_predicted:
-        flag = label_dict.get(label_predict, None)
+        flag = label_dict.get(label_predict)
     if flag is not None:
-        count = count + 1
+        count += 1
     return count / len(labels)
 
 def compute_confuse_matrix_batch(y_targetlabel_list,y_logits_array,label_dict,name='default'):

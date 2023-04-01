@@ -76,9 +76,7 @@ class EntityNetwork:
         # 2. dynamic emeory
         self.hidden_state=self.rnn_story() #[batch_size,block_size,hidden_size]. get hidden state after process the story
 
-        # 3.output layer
-        logits=self.output_module() #[batch_size,vocab_size]
-        return logits
+        return self.output_module()
 
     def embedding_with_mask(self):
         # 1.1 embedding for story and query
@@ -148,8 +146,7 @@ class EntityNetwork:
         H_u_matmul=tf.matmul(u,self.H)+self.h_u_bias #shape:[batch_size,hidden_size]<----([batch_size,hidden_size],[hidden_size,hidden_size])
         activation=self.activation(self.query_embedding + H_u_matmul,scope="query_add_hidden")           #shape:[batch_size,hidden_size]
         activation = tf.nn.dropout(activation,keep_prob=self.dropout_keep_prob) #shape:[batch_size,hidden_size]
-        y=tf.matmul(activation,self.R)+self.y_bias #shape:[batch_size,vocab_size]<-----([batch_size,hidden_size],[hidden_size,vocab_size])
-        return y #shape:[batch_size,vocab_size]
+        return tf.matmul(activation,self.R)+self.y_bias
 
     def rnn_story(self):
         """
@@ -189,7 +186,9 @@ class EntityNetwork:
         print("======>h_candidate_part1:",h_candidate_part1) #(160, 100)
         h_candidate_part1=tf.reshape(h_candidate_part1,shape=(self.batch_size,self.block_size,self.dimension)) #[batch_size,block_size,hidden_size]
         h_candidate_part2=tf.expand_dims(tf.matmul(s_t,self.W)+self.h2_bias,axis=1)              #shape:[batch_size,1,hidden_size]
-        h_candidate=self.activation(h_candidate_part1+h_candidate_part2,scope="h_candidate"+str(i))   #shape:[batch_size,block_size,hidden_size]
+        h_candidate = self.activation(
+            h_candidate_part1 + h_candidate_part2, scope=f"h_candidate{str(i)}"
+        )
 
         # 3.update hidden state
         h_all=h_all+tf.multiply(g,h_candidate) #shape:[batch_size,block_size,hidden_size]
@@ -244,10 +243,13 @@ class EntityNetwork:
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,
                                                    self.decay_rate, staircase=True)
         self.learning_rate_=learning_rate
-        #noise_std_dev = tf.constant(0.3) / (tf.sqrt(tf.cast(tf.constant(1) + self.global_step, tf.float32))) #gradient_noise_scale=noise_std_dev
-        train_op = tf_contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,
-                                                   learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf_contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     #:param s_t: vector representation of current input(is a sentence). shape:[batch_size,sequence_length,embed_size]
     #:param h: value(hidden state).shape:[hidden_size]
@@ -319,7 +321,7 @@ def test():
             print(i, "query:", query, "=====================>")
             print(i, "loss:", loss, "acc:", acc, "label:", answer_single, "prediction:", predict)
             if i % 300 == 0:
-                save_path = ckpt_dir + "model.ckpt"
+                save_path = f"{ckpt_dir}model.ckpt"
                 saver.save(sess, save_path, global_step=i * 300)
 
 def predict():

@@ -102,7 +102,7 @@ def main(_):
                                      FLAGS.story_length,vocab_size, FLAGS.embed_size, FLAGS.hidden_size, FLAGS.is_training,num_pass=FLAGS.num_pass,
                                      use_gated_gru=FLAGS.use_gated_gru,decode_with_sequences=FLAGS.decode_with_sequences,multi_label_flag=FLAGS.multi_label_flag,l2_lambda=FLAGS.l2_lambda)
         saver_dmn = tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir_dmn + "checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir_dmn}checkpoint"):
             print("Restoring Variables from Checkpoint of DMN.")
             saver_dmn.restore(sess_dmn, tf.train.latest_checkpoint(FLAGS.ckpt_dir_dmn))
         else:
@@ -114,7 +114,7 @@ def main(_):
                               FLAGS.story_length,vocab_size, FLAGS.embed_size, FLAGS.hidden_size, FLAGS.is_training,
                               multi_label_flag=True, block_size=FLAGS.block_size,use_bi_lstm=FLAGS.use_bi_lstm)
         saver_entity = tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir_entity + "checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir_entity}checkpoint"):
             print("Restoring Variables from Checkpoint of EntityNet.")
             saver_entity.restore(sess_entity, tf.train.latest_checkpoint(FLAGS.ckpt_dir_entity))
         else:
@@ -125,7 +125,7 @@ def main(_):
         model_cnn = TextCNN(filter_sizes, FLAGS.num_filters, FLAGS.num_classes, FLAGS.learning_rate, FLAGS.batch_size,
                           FLAGS.decay_steps, FLAGS.decay_rate,FLAGS.sentence_len, vocab_size, FLAGS.embed_size, FLAGS.is_training)
         saver_cnn = tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir_cnn + "checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir_cnn}checkpoint"):
             print("Restoring Variables from Checkpoint.TextCNN.")
             saver_cnn.restore(sess_cnn, tf.train.latest_checkpoint(FLAGS.ckpt_dir_cnn))
         else:
@@ -137,7 +137,7 @@ def main(_):
                                 FLAGS.batch_size,FLAGS.decay_steps, FLAGS.decay_rate, FLAGS.sentence_len, vocab_size,
                                 FLAGS.embed_size_256_embedding, FLAGS.is_training)
         saver_cnn_256_embedding = tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir_cnn_256_embedding + "checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir_cnn_256_embedding}checkpoint"):
             print("Restoring Variables from Checkpoint.TextCNN_256_embedding")
             saver_cnn_256_embedding.restore(sess_cnn_256_embedding, tf.train.latest_checkpoint(FLAGS.ckpt_dir_cnn_256_embedding))
         else:
@@ -156,7 +156,8 @@ def main(_):
     #        return
 
         # 5.feed data, to get logits
-        number_of_training_data=len(testX2);print("number_of_training_data:",number_of_training_data)
+        number_of_training_data=len(testX2)
+        print("number_of_training_data:",number_of_training_data)
         index=0
         predict_target_file_f = codecs.open(FLAGS.predict_target_file, 'a', 'utf8')
         global sess_dmn
@@ -186,11 +187,7 @@ def main(_):
 def get_label_using_logits(logits,vocabulary_index2word_label,top_number=5):
     index_list=np.argsort(logits)[-top_number:] #print("sum_p", np.sum(1.0 / (1 + np.exp(-logits))))
     index_list=index_list[::-1]
-    label_list=[]
-    for index in index_list:
-        label=vocabulary_index2word_label[index]
-        label_list.append(label) #('get_label_using_logits.label_list:', [u'-3423450385060590478', u'2838091149470021485', u'-3174907002942471215', u'-1812694399780494968', u'6815248286057533876'])
-    return label_list
+    return [vocabulary_index2word_label[index] for index in index_list]
 
 # get label using logits
 def get_label_using_logits_with_value(logits,vocabulary_index2word_label,top_number=5):
@@ -207,7 +204,7 @@ def get_label_using_logits_with_value(logits,vocabulary_index2word_label,top_num
 # write question id and labels to file system.
 def write_question_id_with_labels(question_id,labels_list,f):
     labels_string=",".join(labels_list)
-    f.write(question_id+","+labels_string+"\n")
+    f.write(f"{question_id},{labels_string}" + "\n")
 
 # get label using logits
 def get_label_using_logits_batch(question_id_sublist,logits_batch,vocabulary_index2word_label,f,top_number=5):
@@ -226,7 +223,7 @@ def get_label_using_logits_batch(question_id_sublist,logits_batch,vocabulary_ind
 # write question id and labels to file system.
 def write_question_id_with_labels(question_id,labels_list,f):
     labels_string=",".join(labels_list)
-    f.write(question_id+","+labels_string+"\n")
+    f.write(f"{question_id},{labels_string}" + "\n")
 
 if __name__ == "__main__":
     tf.app.run()

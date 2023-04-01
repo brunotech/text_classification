@@ -82,11 +82,15 @@ class TextCNN:
 
     def cnn_single_layer(self):
         pooled_outputs = []
-        for i, filter_size in enumerate(self.filter_sizes):
+        for filter_size in self.filter_sizes:
             # with tf.name_scope("convolution-pooling-%s" %filter_size):
-            with tf.variable_scope("convolution-pooling-%s" % filter_size):
+            with tf.variable_scope(f"convolution-pooling-{filter_size}"):
                 # ====>a.create filter
-                filter = tf.get_variable("filter-%s" % filter_size, [filter_size, self.embed_size, 1, self.num_filters],initializer=self.initializer)
+                filter = tf.get_variable(
+                    f"filter-{filter_size}",
+                    [filter_size, self.embed_size, 1, self.num_filters],
+                    initializer=self.initializer,
+                )
                 # ====>b.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
                 # Conv.Input: given an input tensor of shape `[batch, in_height, in_width, in_channels]` and a filter / kernel tensor of shape `[filter_height, filter_width, in_channels, out_channels]`
                 # Conv.Returns: A `Tensor`. Has the same type as `input`.
@@ -97,7 +101,7 @@ class TextCNN:
                 conv = tf.contrib.layers.batch_norm(conv, is_training=self.is_training_flag, scope='cnn_bn_')
 
                 # ====>c. apply nolinearity
-                b = tf.get_variable("b-%s" % filter_size, [self.num_filters])  # ADD 2017-06-09
+                b = tf.get_variable(f"b-{filter_size}", [self.num_filters])
                 h = tf.nn.relu(tf.nn.bias_add(conv, b),"relu")  # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]. tf.nn.bias_add:adds `bias` to `value`
                 # ====>. max-pooling.  value: A 4-D `Tensor` with shape `[batch, height, width, channels]
                 #                  ksize: A list of ints that has length >= 4.  The size of the window for each dimension of the input tensor.
@@ -123,23 +127,31 @@ class TextCNN:
         pooled_outputs = []
         print("sentence_embeddings_expanded:",self.sentence_embeddings_expanded)
         for i, filter_size in enumerate(self.filter_sizes):
-            with tf.variable_scope('cnn_multiple_layers' + "convolution-pooling-%s" % filter_size):
+            with tf.variable_scope(f"cnn_multiple_layersconvolution-pooling-{filter_size}"):
                 # 1) CNN->BN->relu
-                filter = tf.get_variable("filter-%s" % filter_size,[filter_size, self.embed_size, 1, self.num_filters],initializer=self.initializer)
+                filter = tf.get_variable(
+                    f"filter-{filter_size}",
+                    [filter_size, self.embed_size, 1, self.num_filters],
+                    initializer=self.initializer,
+                )
                 conv = tf.nn.conv2d(self.sentence_embeddings_expanded, filter, strides=[1, 1, 1, 1],padding="SAME",name="conv")  # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]
                 conv = tf.contrib.layers.batch_norm(conv, is_training=self.is_training_flag, scope='cnn1')
                 print(i, "conv1:", conv)
-                b = tf.get_variable("b-%s" % filter_size, [self.num_filters])  # ADD 2017-06-09
+                b = tf.get_variable(f"b-{filter_size}", [self.num_filters])
                 h = tf.nn.relu(tf.nn.bias_add(conv, b),"relu")  # shape:[batch_size,sequence_length,1,num_filters]. tf.nn.bias_add:adds `bias` to `value`
 
                 # 2) CNN->BN->relu
                 h = tf.reshape(h, [-1, self.sequence_length, self.num_filters,1])  # shape:[batch_size,sequence_length,num_filters,1]
                 # Layer2:CONV-RELU
-                filter2 = tf.get_variable("filter2-%s" % filter_size,[filter_size, self.num_filters, 1, self.num_filters],initializer=self.initializer)
+                filter2 = tf.get_variable(
+                    f"filter2-{filter_size}",
+                    [filter_size, self.num_filters, 1, self.num_filters],
+                    initializer=self.initializer,
+                )
                 conv2 = tf.nn.conv2d(h, filter2, strides=[1, 1, 1, 1], padding="SAME",name="conv2")  # shape:[batch_size,sequence_length-filter_size*2+2,1,num_filters]
                 conv2 = tf.contrib.layers.batch_norm(conv2, is_training=self.is_training_flag, scope='cnn2')
                 print(i, "conv2:", conv2)
-                b2 = tf.get_variable("b2-%s" % filter_size, [self.num_filters])  # ADD 2017-06-09
+                b2 = tf.get_variable(f"b2-{filter_size}", [self.num_filters])
                 h = tf.nn.relu(tf.nn.bias_add(conv2, b2),"relu2")  # shape:[batch_size,sequence_length,1,num_filters]. tf.nn.bias_add:adds `bias` to `value`
 
                 # 3. Max-pooling
@@ -185,8 +197,13 @@ class TextCNN:
     def train_old(self):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
-        train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf.contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     def train(self):
         """based on the loss, use SGD to update parameter"""
@@ -249,10 +266,7 @@ def compute_single_label(listt):
         current=listt[i]
         next=listt[i+1] if i<length-1 else 0
         summ=previous+current+next
-        if summ>=2:
-            summ=1
-        else:
-            summ=0
+        summ = 1 if summ>=2 else 0
         result.append(summ)
     return result
 

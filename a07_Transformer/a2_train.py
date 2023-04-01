@@ -44,36 +44,29 @@ tf.app.flags.DEFINE_integer("decoder_sent_length",25,"length of decoder inputs")
 
 #1.load data(X:list of lint,y:int). 2.create session. 3.feed data. 4.training (5.validation) ,(6.prediction)
 def main(_):
-    #1.load data(X:list of lint,y:int).
-    #if os.path.exists(FLAGS.cache_path):  # 如果文件系统中存在，那么加载故事（词汇表索引化的）
-    #    with open(FLAGS.cache_path, 'r') as data_f:
-    #        trainX, trainY, testX, testY, vocabulary_index2word=pickle.load(data_f)
-    #        vocab_size=len(vocabulary_index2word)
-    #else:
-    if 1==1:
-        trainX, trainY, testX, testY = None, None, None, None
-        vocabulary_word2index, vocabulary_index2word = create_voabulary(word2vec_model_path=FLAGS.word2vec_model_path,name_scope="transformer") #simple='simple'
-        vocab_size = len(vocabulary_word2index)
-        print("transformer.vocab_size:",vocab_size)
-        vocabulary_word2index_label,vocabulary_index2word_label = create_voabulary_label(name_scope="transformer",use_seq2seq=True)
-        if FLAGS.multi_label_flag:
-            FLAGS.traning_data_path='training-data/train-zhihu6-title-desc.txt' #train
-        train,test,_=load_data_multilabel_new(vocabulary_word2index,vocabulary_word2index_label,multi_label_flag=FLAGS.multi_label_flag,
-                                              use_seq2seq=True,traning_data_path=FLAGS.traning_data_path,seq2seq_label_length=FLAGS.decoder_sent_length) #TODO
-        trainX, trainY,train_decoder_input = train
-        testX, testY,test_decoder_input = test
+    trainX, trainY, testX, testY = None, None, None, None
+    vocabulary_word2index, vocabulary_index2word = create_voabulary(word2vec_model_path=FLAGS.word2vec_model_path,name_scope="transformer") #simple='simple'
+    vocab_size = len(vocabulary_word2index)
+    print("transformer.vocab_size:",vocab_size)
+    vocabulary_word2index_label,vocabulary_index2word_label = create_voabulary_label(name_scope="transformer",use_seq2seq=True)
+    if FLAGS.multi_label_flag:
+        FLAGS.traning_data_path='training-data/train-zhihu6-title-desc.txt' #train
+    train,test,_=load_data_multilabel_new(vocabulary_word2index,vocabulary_word2index_label,multi_label_flag=FLAGS.multi_label_flag,
+                                          use_seq2seq=True,traning_data_path=FLAGS.traning_data_path,seq2seq_label_length=FLAGS.decoder_sent_length) #TODO
+    trainX, trainY,train_decoder_input = train
+    testX, testY,test_decoder_input = test
 
-        print("trainY:",trainY[0:10])
-        print("train_decoder_input:",train_decoder_input[0:10])
-        # 2.Data preprocessing.Sequence padding
-        print("start padding & transform to one hot...")
-        trainX = pad_sequences(trainX, maxlen=FLAGS.sequence_length, value=0.)  # padding to max length
-        testX = pad_sequences(testX, maxlen=FLAGS.sequence_length, value=0.)  # padding to max length
-        #with open(FLAGS.cache_path, 'w') as data_f: #save data to cache file, so we can use it next time quickly.
-        #    pickle.dump((trainX,trainY,testX,testY,vocabulary_index2word),data_f)
-        print("trainX[0]:", trainX[0]) #;print("trainY[0]:", trainY[0])
-        # Converting labels to binary vectors
-        print("end padding & transform to one hot...")
+    print("trainY:", trainY[:10])
+    print("train_decoder_input:", train_decoder_input[:10])
+    # 2.Data preprocessing.Sequence padding
+    print("start padding & transform to one hot...")
+    trainX = pad_sequences(trainX, maxlen=FLAGS.sequence_length, value=0.)  # padding to max length
+    testX = pad_sequences(testX, maxlen=FLAGS.sequence_length, value=0.)  # padding to max length
+    #with open(FLAGS.cache_path, 'w') as data_f: #save data to cache file, so we can use it next time quickly.
+    #    pickle.dump((trainX,trainY,testX,testY,vocabulary_index2word),data_f)
+    print("trainX[0]:", trainX[0]) #;print("trainY[0]:", trainY[0])
+    # Converting labels to binary vectors
+    print("end padding & transform to one hot...")
     #2.create session.
     config=tf.ConfigProto()
     config.gpu_options.allow_growth=True
@@ -84,7 +77,7 @@ def main(_):
                           decoder_sent_length=FLAGS.sequence_length,l2_lambda=FLAGS.l2_lambda) #TODO decoder_sent_length=FLAGS.sequence_length
         #Initialize Save
         saver=tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir}checkpoint"):
             print("Restoring Variables from Checkpoint")
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.ckpt_dir))
         else:
@@ -125,16 +118,14 @@ def main(_):
                         lrr=sess.run([model.learning_rate_decay_half_op])
                         learning_rate2 = sess.run(model.learning_rate)
                         print("transformer==>validation.part.learning_rate1:", learning_rate1, " ;learning_rate2:",learning_rate2)
-                    #print("HierAtten==>Epoch %d Validation Loss:%.3f\tValidation Accuracy: %.3f" % (epoch, eval_loss, eval_acc))
-                    else:# loss is decreasing
-                        if eval_loss<best_eval_loss:
-                            print("transformer==>going to save the model.eval_loss:",math.exp(eval_loss) if eval_loss<20 else 10000.000,";best_eval_loss:",math.exp(best_eval_loss) if best_eval_loss<20 else 10000.000)
+                    elif eval_loss<best_eval_loss:
+                        print("transformer==>going to save the model.eval_loss:",math.exp(eval_loss) if eval_loss<20 else 10000.000,";best_eval_loss:",math.exp(best_eval_loss) if best_eval_loss<20 else 10000.000)
                             # save model to checkpoint
-                            save_path = FLAGS.ckpt_dir + "model.ckpt"
-                            saver.save(sess, save_path, global_step=epoch)
-                            best_eval_loss=eval_loss
+                        save_path = f"{FLAGS.ckpt_dir}model.ckpt"
+                        saver.save(sess, save_path, global_step=epoch)
+                        best_eval_loss=eval_loss
                     previous_eval_loss = eval_loss
-                ##VALIDATION VALIDATION VALIDATION PART######################################################################################################
+                            ##VALIDATION VALIDATION VALIDATION PART######################################################################################################
 
             #epoch increment
             print("going to increment epoch counter....")
@@ -142,15 +133,12 @@ def main(_):
 
         # 5.最后在测试集上做测试，并报告测试准确率 Test
         test_loss, test_acc = do_eval(sess, model, testX, testY, batch_size,vocabulary_index2word_label,eval_decoder_input=test_decoder_input)
-    pass
 
 def assign_pretrained_word_embedding(sess,vocabulary_index2word,vocab_size,model,word2vec_model_path=None):
     print("using pre-trained word emebedding.started.word2vec_model_path:",word2vec_model_path)
     # word2vecc=word2vec.load('word_embedding.txt') #load vocab-vector fiel.word2vecc['w91874']
     word2vec_model = word2vec.load(word2vec_model_path, kind='bin')
-    word2vec_dict = {}
-    for word, vector in zip(word2vec_model.vocab, word2vec_model.vectors):
-        word2vec_dict[word] = vector
+    word2vec_dict = dict(zip(word2vec_model.vocab, word2vec_model.vectors))
     word_embedding_2dlist = [[]] * vocab_size  # create an empty word_embedding list.
     word_embedding_2dlist[0] = np.zeros(FLAGS.embed_size)  # assign empty for first word:'PAD'
     bound = np.sqrt(6.0) / np.sqrt(vocab_size)  # bound for random variables.

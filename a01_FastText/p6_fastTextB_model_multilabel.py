@@ -57,9 +57,7 @@ class fastTextB:
         # 2.average vectors, to get representation of the sentence
         self.sentence_embeddings = tf.reduce_mean(sentence_embeddings, axis=1)  # [None,self.embed_size]
 
-        # 3.linear classifier layer
-        logits = tf.matmul(self.sentence_embeddings, self.W) + self.b #[None, self.label_size]==tf.matmul([None,self.embed_size],[self.embed_size,self.label_size])
-        return logits
+        return tf.matmul(self.sentence_embeddings, self.W) + self.b
 
 
     def loss(self,l2_lambda=0.0001):
@@ -95,5 +93,9 @@ class fastTextB:
     def train(self):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
-        train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,learning_rate=learning_rate, optimizer="Adam")
-        return train_op
+        return tf.contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+        )

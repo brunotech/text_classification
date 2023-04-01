@@ -73,11 +73,14 @@ class TwoCNNTextRelation:
         # 1.loop each filter size. for each filter, do:convolution-pooling layer(a.create filters,b.conv,c.apply nolinearity,d.max-pooling)--->
         # you can use:tf.nn.conv2d;tf.nn.relu;tf.nn.max_pool; feature shape is 4-d. feature is a new variable
         pooled_outputs = []
-        for i, filter_size in enumerate(self.filter_sizes):
-            with tf.name_scope(name_scope_prefix + "convolution-pooling-%s" % filter_size):
+        for filter_size in self.filter_sizes:
+            with tf.name_scope(f"{name_scope_prefix}convolution-pooling-{filter_size}"):
                 # ====>a.create filter
-                filter = tf.get_variable(name_scope_prefix+"filter-%s" % filter_size, [filter_size, self.embed_size, 1, self.num_filters],
-                                         initializer=self.initializer)
+                filter = tf.get_variable(
+                    f"{name_scope_prefix}filter-{filter_size}",
+                    [filter_size, self.embed_size, 1, self.num_filters],
+                    initializer=self.initializer,
+                )
                 # ====>b.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
                 # Conv.Input: given an input tensor of shape `[batch, in_height, in_width, in_channels]` and a filter / kernel tensor of shape `[filter_height, filter_width, in_channels, out_channels]`
                 # Conv.Returns: A `Tensor`. Has the same type as `input`.
@@ -87,7 +90,7 @@ class TwoCNNTextRelation:
                 conv = tf.nn.conv2d(sentence_embeddings_expanded, filter, strides=[1, 1, 1, 1], padding="VALID",
                                     name="conv")  # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]
                 # ====>c. apply nolinearity
-                b = tf.get_variable(name_scope_prefix+"b-%s" % filter_size, [self.num_filters])
+                b = tf.get_variable(f"{name_scope_prefix}b-{filter_size}", [self.num_filters])
                 h = tf.nn.relu(tf.nn.bias_add(conv, b),
                                "relu")  # shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]. tf.nn.bias_add:adds `bias` to `value`
                 # ====>. max-pooling.  value: A 4-D `Tensor` with shape `[batch, height, width, channels]
@@ -138,8 +141,12 @@ class TwoCNNTextRelation:
     def train(self):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
-        train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,learning_rate=learning_rate, optimizer="Adam")
-        return train_op
+        return tf.contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+        )
 
 #test started
 # def test():

@@ -88,10 +88,14 @@ class TextCNN_with_RCNN:
         # 2.=====>loop each filter size. for each filter, do:convolution-pooling layer(a.create filters,b.conv,c.apply nolinearity,d.max-pooling)--->
         # you can use:tf.nn.conv2d;tf.nn.relu;tf.nn.max_pool; feature shape is 4-d. feature is a new variable
         pooled_outputs = []
-        for i,filter_size in enumerate(self.filter_sizes):
-            with tf.name_scope("convolution-pooling-%s" %filter_size):
+        for filter_size in self.filter_sizes:
+            with tf.name_scope(f"convolution-pooling-{filter_size}"):
                 # ====>a.create filter
-                filter=tf.get_variable("filter-%s"%filter_size,[filter_size,self.embed_size,1,self.num_filters],initializer=self.initializer)
+                filter = tf.get_variable(
+                    f"filter-{filter_size}",
+                    [filter_size, self.embed_size, 1, self.num_filters],
+                    initializer=self.initializer,
+                )
                 # ====>b.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
                 #Conv.Input: given an input tensor of shape `[batch, in_height, in_width, in_channels]` and a filter / kernel tensor of shape `[filter_height, filter_width, in_channels, out_channels]`
                 #Conv.Returns: A `Tensor`. Has the same type as `input`.
@@ -100,7 +104,7 @@ class TextCNN_with_RCNN:
                 #input data format:NHWC:[batch, height, width, channels];output:4-D
                 conv=tf.nn.conv2d(self.sentence_embeddings_expanded, filter, strides=[1,1,1,1], padding="VALID",name="conv") #shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]
                 # ====>c. apply nolinearity
-                b=tf.get_variable("b-%s"%filter_size,[self.num_filters])
+                b = tf.get_variable(f"b-{filter_size}", [self.num_filters])
                 h=tf.nn.relu(tf.nn.bias_add(conv,b),"relu") #shape:[batch_size,sequence_length - filter_size + 1,1,num_filters]. tf.nn.bias_add:adds `bias` to `value`
                 # ====>. max-pooling.  value: A 4-D `Tensor` with shape `[batch, height, width, channels]
                 #                  ksize: A list of ints that has length >= 4.  The size of the window for each dimension of the input tensor.
@@ -159,7 +163,7 @@ class TextCNN_with_RCNN:
         context_left_previous=tf.zeros((self.batch_size,self.embed_size))
         #2. get list of context left
         context_left_list=[]
-        for i,current_embedding_word in enumerate(embedded_words_squeezed):#sentence_length个[None,embed_size]
+        for current_embedding_word in embedded_words_squeezed:
             context_left=self.get_context_left(context_left_previous, embedding_previous) #[None,embed_size]
             context_left_list.append(context_left) #append result to list
             embedding_previous=current_embedding_word #assign embedding_previous
@@ -170,7 +174,7 @@ class TextCNN_with_RCNN:
         embedding_afterward=self.right_side_last_word
         context_right_afterward = tf.zeros((self.batch_size, self.embed_size))
         context_right_list=[]
-        for j,current_embedding_word in enumerate(embedded_words_squeezed2):
+        for current_embedding_word in embedded_words_squeezed2:
             context_right=self.get_context_right(context_right_afterward,embedding_afterward)
             context_right_list.append(context_right)
             embedding_afterward=current_embedding_word
@@ -181,11 +185,7 @@ class TextCNN_with_RCNN:
             representation=tf.concat([context_left_list[index],current_embedding_word,context_right_list[index]],axis=1)
             #print(i,"representation:",representation)
             output_list.append(representation) #shape:sentence_length个[None,embed_size*3]
-        #5. stack list to a tensor
-        #print("output_list:",output_list) #(3, 5, 8, 100)
-        output=tf.stack(output_list,axis=1) #shape:[None,sentence_length,embed_size*3]
-        #print("output:",output)
-        return output
+        return tf.stack(output_list,axis=1)
 
 
     def inference2(self):
@@ -212,8 +212,7 @@ class TextCNN_with_RCNN:
         self.p_weight2=1.0-self.p_weight1
         logits1=self.inference1()
         logits2=self.inference2()
-        logits=self.p_weight1*logits1+self.p_weight2*logits2
-        return logits
+        return self.p_weight1*logits1+self.p_weight2*logits2
 
     #########################################################################################################################################################
     def loss(self,l2_lambda=0.0001):#0.001
@@ -245,8 +244,12 @@ class TextCNN_with_RCNN:
     def train(self):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
-        train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,learning_rate=learning_rate, optimizer="Adam")
-        return train_op
+        return tf.contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+        )
 
 #test started
 def test():
@@ -265,15 +268,15 @@ def test():
     num_filters=128
     textRNN=TextCNN_with_RCNN(filter_sizes,num_filters,num_classes, learning_rate, batch_size, decay_steps, decay_rate,sequence_length,vocab_size,embed_size,is_training)
     with tf.Session() as sess:
-      sess.run(tf.global_variables_initializer())
-      for i in range(100):
-           input_x=np.zeros((batch_size,sequence_length)) #[None, self.sequence_length]
-           input_x[input_x>0.5]=1
-           input_x[input_x <= 0.5] = 0
-           input_y=np.array([1,0,1,1,1,2,1,1])#np.zeros((batch_size),dtype=np.int32) #[None, self.sequence_length]
-           loss,acc,predict,p_weight1_value,_=sess.run([textRNN.loss_val,textRNN.accuracy,textRNN.predictions,
-                                                        textRNN.p_weight1 ,textRNN.train_op],#textRNN.W_projection_rcnn
-                                feed_dict={textRNN.input_x:input_x,textRNN.input_y:input_y,textRNN.dropout_keep_prob:dropout_keep_prob})
-           print("loss:",loss,"acc:",acc,"label:",input_y,"prediction:",predict)
-           print("p_weight1_value:",p_weight1_value)
+        sess.run(tf.global_variables_initializer())
+        for _ in range(100):
+            input_x=np.zeros((batch_size,sequence_length)) #[None, self.sequence_length]
+            input_x[input_x>0.5]=1
+            input_x[input_x <= 0.5] = 0
+            input_y=np.array([1,0,1,1,1,2,1,1])#np.zeros((batch_size),dtype=np.int32) #[None, self.sequence_length]
+            loss,acc,predict,p_weight1_value,_=sess.run([textRNN.loss_val,textRNN.accuracy,textRNN.predictions,
+                                                         textRNN.p_weight1 ,textRNN.train_op],#textRNN.W_projection_rcnn
+                                 feed_dict={textRNN.input_x:input_x,textRNN.input_y:input_y,textRNN.dropout_keep_prob:dropout_keep_prob})
+            print("loss:",loss,"acc:",acc,"label:",input_y,"prediction:",predict)
+            print("p_weight1_value:",p_weight1_value)
 #test()

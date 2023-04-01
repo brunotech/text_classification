@@ -54,14 +54,15 @@ def main(_):
         textRNN=TextRNN(FLAGS.num_classes, FLAGS.learning_rate, FLAGS.batch_size, FLAGS.decay_steps, FLAGS.decay_rate, FLAGS.sequence_length,
                         vocab_size, FLAGS.embed_size, FLAGS.is_training)
         saver=tf.train.Saver()
-        if os.path.exists(FLAGS.ckpt_dir+"checkpoint"):
+        if os.path.exists(f"{FLAGS.ckpt_dir}checkpoint"):
             print("Restoring Variables from Checkpoint for TextRNN")
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.ckpt_dir))
         else:
             print("Can't find the checkpoint.going to stop")
             return
         # 5.feed data, to get logits
-        number_of_training_data=len(testX2);print("number_of_training_data:",number_of_training_data)
+        number_of_training_data=len(testX2)
+        print("number_of_training_data:",number_of_training_data)
         index=0
         predict_target_file_f = codecs.open(FLAGS.predict_target_file, 'a', 'utf8')
        #for start, end in zip(range(0, number_of_training_data, FLAGS.batch_size),range(FLAGS.batch_size, number_of_training_data+1, FLAGS.batch_size)):
@@ -109,7 +110,7 @@ def get_label_using_logits_batch(question_id_sublist,logits_batch,vocabulary_ind
 # write question id and labels to file system.
 def write_question_id_with_labels(question_id,labels_list,f):
     labels_string=",".join(labels_list)
-    f.write(question_id+","+labels_string+"\n")
+    f.write(f"{question_id},{labels_string}" + "\n")
 
 if __name__ == "__main__":
     tf.app.run()

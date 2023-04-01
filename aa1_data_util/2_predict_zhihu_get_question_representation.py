@@ -16,10 +16,10 @@ q_linesv=q_filev.readlines()
 questionid_words_representationv={}
 question_representationv=[]
 question_representationv_list=[]
-for i,line in enumerate(q_linesv):
+for line in q_linesv:
     element_lists=line.split('\t') #['c324,c39','w305...','c']
     question_id=element_lists[0]
-    question_representationv=[x for x in element_lists[2].split(",")] # TODO +[x for x in element_lists[1].split(",")]
+    question_representationv = list(element_lists[2].split(","))
     #print("question_representation:",question_representationv)
     questionid_words_representationv[question_id]=question_representationv
     question_representationv_list.append(question_representationv)

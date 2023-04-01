@@ -116,10 +116,13 @@ class Transformer(BaseClass):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
         self.learning_rate_=learning_rate
-        #noise_std_dev = tf.constant(0.3) / (tf.sqrt(tf.cast(tf.constant(1) + self.global_step, tf.float32))) #gradient_noise_scale=noise_std_dev
-        train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,
-                                                   learning_rate=learning_rate, optimizer="Adam",clip_gradients=self.clip_gradients)
-        return train_op
+        return tf.contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+            clip_gradients=self.clip_gradients,
+        )
 
     def instantiate_weights(self):
         """define all weights here"""
@@ -161,7 +164,7 @@ def test_training():
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         ckpt_dir = 'checkpoint_transformer/sequence_reverse/'
-        if os.path.exists(ckpt_dir+"checkpoint"):
+        if os.path.exists(f"{ckpt_dir}checkpoint"):
             saver.restore(sess, tf.train.latest_checkpoint(ckpt_dir))
         for i in range(15000):
             label_list=get_unique_labels()
@@ -175,7 +178,7 @@ def test_training():
                                                                 model.dropout_keep_prob: dropout_keep_prob}) #model.dropout_keep_prob: dropout_keep_prob
             print(i,"loss:", loss, "acc:", acc, "label_list_original as input x:",label_list_original,";input_y_label:", input_y_label, "prediction:", predict)
             if i%1500==0:
-                save_path = ckpt_dir + "model.ckpt"
+                save_path = f"{ckpt_dir}model.ckpt"
                 saver.save(sess, save_path, global_step=i)
 
 def test_predict():
@@ -220,13 +223,13 @@ def get_unique_labels(length=5):
     #if length is  None:
     #    x=[2,3,4,5,6]
     #else:
-    x=[i for i in range(2,2+length)]
+    x = list(range(2,2+length))
     random.shuffle(x)
     return x
 
 def get_unique_labels_batch(batch_size,length=None):
     x=[]
-    for i in range(batch_size):
+    for _ in range(batch_size):
         labels=get_unique_labels(length=length)
         x.append(labels)
     return x

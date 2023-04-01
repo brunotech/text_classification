@@ -135,8 +135,7 @@ def test_decoder_single_layer():
     decoder.decoder_single_layer(Q,K_s,layer_index,mask)
 
 def test_decoder():
-    output=decoder.decoder_fn()
-    return output
+    return decoder.decoder_fn()
 
 #1. test for single layer of decoder
 #test_decoder_single_layer()

@@ -11,21 +11,19 @@ _GO="_GO"
 _END="_END"
 _PAD="_PAD"
 def create_voabulary(simple=None,word2vec_model_path='../zhihu-word2vec-title-desc.bin-100',name_scope=''): #zhihu-word2vec-multilabel.bin-100
-    cache_path ='../cache_vocabulary_label_pik/'+ name_scope + "_word_voabulary.pik"
+    cache_path = f'../cache_vocabulary_label_pik/{name_scope}_word_voabulary.pik'
     print("cache_path:",cache_path,"file_exists:",os.path.exists(cache_path))
     if os.path.exists(cache_path):#如果缓存文件存在，则直接读取
         with open(cache_path, 'r') as data_f:
             vocabulary_word2index, vocabulary_index2word=pickle.load(data_f)
             return vocabulary_word2index, vocabulary_index2word
     else:
-        vocabulary_word2index={}
-        vocabulary_index2word={}
         if simple is not None:
             word2vec_model_path='../zhihu-word2vec.bin-100'
         print("create vocabulary. word2vec_model_path:",word2vec_model_path)
         model=word2vec.load(word2vec_model_path,kind='bin')
-        vocabulary_word2index['PAD_ID']=0
-        vocabulary_index2word[0]='PAD_ID'
+        vocabulary_word2index = {'PAD_ID': 0}
+        vocabulary_index2word = {0: 'PAD_ID'}
         special_index=0
         if 'biLstmTextRelation' in name_scope:
             vocabulary_word2index['EOS']=1 # a special token for biLstTextRelation model. which is used between two sentences.
@@ -44,7 +42,7 @@ def create_voabulary(simple=None,word2vec_model_path='../zhihu-word2vec-title-de
 # create vocabulary of lables. label is sorted. 1 is high frequency, 2 is low frequency.
 def create_voabulary_label(voabulary_label='../train-zhihu4-only-title-all.txt',name_scope='',use_seq2seq=False):#'train-zhihu.txt'
     print("create_voabulary_label_sorted.started.traning_data_path:",voabulary_label)
-    cache_path ='../cache_vocabulary_label_pik/'+ name_scope + "_label_voabulary.pik"
+    cache_path = f'../cache_vocabulary_label_pik/{name_scope}_label_voabulary.pik'
     if os.path.exists(cache_path):#如果缓存文件存在，则直接读取
         with open(cache_path, 'r') as data_f:
             vocabulary_word2index_label, vocabulary_index2word_label=pickle.load(data_f)
@@ -56,16 +54,17 @@ def create_voabulary_label(voabulary_label='../train-zhihu4-only-title-all.txt',
         vocabulary_word2index_label={}
         vocabulary_index2word_label={}
         vocabulary_label_count_dict={} #{label:count}
-        for i,line in enumerate(lines):
+        for line in lines:
             if '__label__' in line:  #'__label__-2051131023989903826
                 label=line[line.index('__label__')+len('__label__'):].strip().replace("\n","")
-                if vocabulary_label_count_dict.get(label,None) is not None:
-                    vocabulary_label_count_dict[label]=vocabulary_label_count_dict[label]+1
-                else:
-                    vocabulary_label_count_dict[label]=1
+                vocabulary_label_count_dict[label] = (
+                    vocabulary_label_count_dict[label] + 1
+                    if vocabulary_label_count_dict.get(label, None) is not None
+                    else 1
+                )
         list_label=sort_by_value(vocabulary_label_count_dict)
 
-        print("length of list_label:",len(list_label));#print(";list_label:",list_label)
+        print("length of list_label:",len(list_label))
         countt=0
 
         ##########################################################################################
@@ -96,7 +95,7 @@ def sort_by_value(d):
     items=d.items()
     backitems=[[v[1],v[0]] for v in items]
     backitems.sort(reverse=True)
-    return [ backitems[i][1] for i in range(0,len(backitems))]
+    return [backitems[i][1] for i in range(len(backitems))]
 
 def create_voabulary_labelO():
     model = word2vec.load('zhihu-word2vec-multilabel.bin-100', kind='bin') #zhihu-word2vec.bin-100
@@ -104,7 +103,7 @@ def create_voabulary_labelO():
     vocabulary_word2index_label={}
     vocabulary_index2word_label={}
     label_unique={}
-    for i,vocab in enumerate(model.vocab):
+    for vocab in model.vocab:
         if '__label__' in vocab:  #'__label__-2051131023989903826
             label=vocab[vocab.index('__label__')+len('__label__'):]
             if label_unique.get(label,None) is None: #不曾出现过的话，保持到字典中
@@ -115,7 +114,7 @@ def create_voabulary_labelO():
     return vocabulary_word2index_label,vocabulary_index2word_label
 
 def load_data_multilabel_new(vocabulary_word2index,vocabulary_word2index_label,valid_portion=0.05,max_training_data=1000000,
-                             traning_data_path='../train-zhihu4-only-title-all.txt',multi_label_flag=True,use_seq2seq=False,seq2seq_label_length=6):  # n_words=100000,
+                             traning_data_path='../train-zhihu4-only-title-all.txt',multi_label_flag=True,use_seq2seq=False,seq2seq_label_length=6):    # n_words=100000,
     """
     input: a file path
     :return: train, test, valid. where train=(trainX, trainY). where
@@ -166,16 +165,15 @@ def load_data_multilabel_new(vocabulary_word2index,vocabulary_word2index_label,v
                 print(i,"ys:==========>0", ys)
                 print(i,"ys_mulithot_list:==============>1", ys_mulithot_list)
                 print(i,"ys_decoder_input:==============>2", ys_decoder_input)
-        else:
-            if multi_label_flag: # 2)prepare multi-label format for classification
-                ys = y.replace('\n', '').split(" ")  # ys is a list
-                ys_index=[]
-                for y in ys:
-                    y_index = vocabulary_word2index_label[y]
-                    ys_index.append(y_index)
-                ys_mulithot_list=transform_multilabel_as_multihot(ys_index)
-            else:                #3)prepare single label format for classification
-                ys_mulithot_list=vocabulary_word2index_label[y]
+        elif multi_label_flag: # 2)prepare multi-label format for classification
+            ys = y.replace('\n', '').split(" ")  # ys is a list
+            ys_index=[]
+            for y in ys:
+                y_index = vocabulary_word2index_label[y]
+                ys_index.append(y_index)
+            ys_mulithot_list=transform_multilabel_as_multihot(ys_index)
+        else:                #3)prepare single label format for classification
+            ys_mulithot_list=vocabulary_word2index_label[y]
         if i<=3:
             print("ys_index:")
             #print(ys_index)
@@ -184,22 +182,27 @@ def load_data_multilabel_new(vocabulary_word2index,vocabulary_word2index_label,v
         Y.append(ys_mulithot_list)
         if use_seq2seq:
             Y_decoder_input.append(ys_decoder_input) #decoder input
-        #if i>50000:
-        #    break
+            #if i>50000:
+            #    break
     # 4.split to train,test and valid data
     number_examples = len(X)
     print("number_examples:",number_examples) #
-    train = (X[0:int((1 - valid_portion) * number_examples)], Y[0:int((1 - valid_portion) * number_examples)])
+    train = (
+        X[: int((1 - valid_portion) * number_examples)],
+        Y[: int((1 - valid_portion) * number_examples)],
+    )
     test = (X[int((1 - valid_portion) * number_examples) + 1:], Y[int((1 - valid_portion) * number_examples) + 1:])
     if use_seq2seq:
-        train=train+(Y_decoder_input[0:int((1 - valid_portion) * number_examples)],)
+        train = train + (
+            Y_decoder_input[: int((1 - valid_portion) * number_examples)],
+        )
         test=test+(Y_decoder_input[int((1 - valid_portion) * number_examples) + 1:],)
     # 5.return
     print("load_data.ended...")
     return train, test, test
 
 def load_data_multilabel_new_twoCNN(vocabulary_word2index,vocabulary_word2index_label,valid_portion=0.05,max_training_data=1000000,
-                                    traning_data_path='train-zhihu4-only-title-all.txt',multi_label_flag=True):  # n_words=100000,
+                                    traning_data_path='train-zhihu4-only-title-all.txt',multi_label_flag=True):    # n_words=100000,
     """
     input: a file path
     :return: train, test, valid. where train=(trainX, trainY). where
@@ -254,13 +257,17 @@ def load_data_multilabel_new_twoCNN(vocabulary_word2index,vocabulary_word2index_
     # 4.split to train,test and valid data
     number_examples = len(X)
     print("number_examples:",number_examples) #
-    train = (X[0:int((1 - valid_portion) * number_examples)],X2[0:int((1 - valid_portion) * number_examples)],Y[0:int((1 - valid_portion) * number_examples)])
+    train = (
+        X[: int((1 - valid_portion) * number_examples)],
+        X2[: int((1 - valid_portion) * number_examples)],
+        Y[: int((1 - valid_portion) * number_examples)],
+    )
     test = (X[int((1 - valid_portion) * number_examples) + 1:], X2[int((1 - valid_portion) * number_examples) + 1:],Y[int((1 - valid_portion) * number_examples) + 1:])
     # 5.return
     print("load_data.ended...")
     return train, test, test
 
-def load_data(vocabulary_word2index,vocabulary_word2index_label,valid_portion=0.05,max_training_data=1000000,training_data_path='train-zhihu4-only-title-all.txt'):  # n_words=100000,
+def load_data(vocabulary_word2index,vocabulary_word2index_label,valid_portion=0.05,max_training_data=1000000,training_data_path='train-zhihu4-only-title-all.txt'):    # n_words=100000,
     """
     input: a file path
     :return: train, test, valid. where train=(trainX, trainY). where
@@ -294,7 +301,10 @@ def load_data(vocabulary_word2index,vocabulary_word2index_label,valid_portion=0.
     # 4.split to train,test and valid data
     number_examples = len(X)
     print("number_examples:",number_examples) #
-    train = (X[0:int((1 - valid_portion) * number_examples)], Y[0:int((1 - valid_portion) * number_examples)])
+    train = (
+        X[: int((1 - valid_portion) * number_examples)],
+        Y[: int((1 - valid_portion) * number_examples)],
+    )
     test = (X[int((1 - valid_portion) * number_examples) + 1:], Y[int((1 - valid_portion) * number_examples) + 1:])
     # 5.return
     print("load_data.ended...")
@@ -309,29 +319,31 @@ def process_one_sentence_to_get_ui_bi_tri_gram(sentence,n_gram=3):
     """
     result=[]
     word_list=sentence.split(" ") #[sentence[i] for i in range(len(sentence))]
-    unigram='';bigram='';trigram='';fourgram=''
+    unigram=''
+    bigram=''
+    trigram=''
+    fourgram=''
     length_sentence=len(word_list)
-    for i,word in enumerate(word_list):
+    for i, word in enumerate(word_list):
         unigram=word                           #ui-gram
         word_i=unigram
         if n_gram>=2 and i+2<=length_sentence: #bi-gram
             bigram="".join(word_list[i:i+2])
-            word_i=word_i+' '+bigram
+            word_i = f'{word_i} {bigram}'
         if n_gram>=3 and i+3<=length_sentence: #tri-gram
             trigram="".join(word_list[i:i+3])
-            word_i = word_i + ' ' + trigram
+            word_i = f'{word_i} {trigram}'
         if n_gram>=4 and i+4<=length_sentence: #four-gram
             fourgram="".join(word_list[i:i+4])
-            word_i = word_i + ' ' + fourgram
+            word_i = f'{word_i} {fourgram}'
         if n_gram>=5 and i+5<=length_sentence: #five-gram
             fivegram="".join(word_list[i:i+5])
-            word_i = word_i + ' ' + fivegram
+            word_i = f'{word_i} {fivegram}'
         result.append(word_i)
-    result=" ".join(result)
-    return result
+    return " ".join(result)
 
 # 加载数据，标签包含多个label：load data with multi-labels
-def load_data_with_multilabels(vocabulary_word2index,vocabulary_word2index_label,traning_path,valid_portion=0.05,max_training_data=1000000):  # n_words=100000,
+def load_data_with_multilabels(vocabulary_word2index,vocabulary_word2index_label,traning_path,valid_portion=0.05,max_training_data=1000000):    # n_words=100000,
     """
     input: a file path
     :return: train, test, valid. where train=(trainX, trainY). where
@@ -377,7 +389,10 @@ def load_data_with_multilabels(vocabulary_word2index,vocabulary_word2index_label
             print(Y_label1999)
     # 4.split to train,test and valid data
     number_examples = len(X)
-    train = (X[0:int((1 - valid_portion) * number_examples)], Y[0:int((1 - valid_portion) * number_examples)]) #TODO Y_label1999[0:int((1 - valid_portion) * number_examples)]
+    train = (
+        X[: int((1 - valid_portion) * number_examples)],
+        Y[: int((1 - valid_portion) * number_examples)],
+    )
     test = (X[int((1 - valid_portion) * number_examples) + 1:], Y[int((1 - valid_portion) * number_examples) + 1:]) #TODO ,Y_label1999[int((1 - valid_portion) * number_examples) + 1:]
     print("load_data_with_multilabels.ended...")
     return train, test
@@ -406,7 +421,7 @@ def load_final_test_data(file_path):
     final_test_file_predict_object = codecs.open(file_path, 'r', 'utf8')
     lines=final_test_file_predict_object.readlines()
     question_lists_result=[]
-    for i,line in enumerate(lines):
+    for line in lines:
         question_id,question_string=line.split("\t")
         question_string=question_string.strip().replace("\n","")
         question_lists_result.append((question_id,question_string))
@@ -436,18 +451,17 @@ def proces_label_to_algin(ys_list,require_size=5):
     :param ys_list: a list
     :return: a list
     """
-    ys_list_result=[0 for x in range(require_size)]
+    ys_list_result = [0 for _ in range(require_size)]
     if len(ys_list)>=require_size: #超长
-        ys_list_result=ys_list[0:require_size]
-    else:#太短
-       if len(ys_list)==1:
-           ys_list_result =[ys_list[0] for x in range(require_size)]
-       elif len(ys_list)==2:
-           ys_list_result = [ys_list[0],ys_list[0],ys_list[0],ys_list[1],ys_list[1]]
-       elif len(ys_list) == 3:
-           ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[1], ys_list[2]]
-       elif len(ys_list) == 4:
-           ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[2], ys_list[3]]
+        ys_list_result = ys_list[:require_size]
+    elif len(ys_list)==1:
+        ys_list_result = [ys_list[0] for _ in range(require_size)]
+    elif len(ys_list)==2:
+        ys_list_result = [ys_list[0],ys_list[0],ys_list[0],ys_list[1],ys_list[1]]
+    elif len(ys_list) == 3:
+        ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[1], ys_list[2]]
+    elif len(ys_list) == 4:
+        ys_list_result = [ys_list[0], ys_list[0], ys_list[1], ys_list[2], ys_list[3]]
     return ys_list_result
 
 def write_uigram_to_trigram():
@@ -467,7 +481,7 @@ def read_topic_info():
     f = codecs.open(topic_info_file_path, 'r', 'utf8')
     lines=f.readlines()
     dict_questionid_title={}
-    for i,line in enumerate(lines):
+    for line in lines:
         topic_id,partent_ids,title_character,title_words,desc_character,decs_words=line.split("\t").strip()
         # print(i,"------------------------------------------------------")
         # print("topic_id:",topic_id)
@@ -476,7 +490,7 @@ def read_topic_info():
         # print("title_words:",title_words)
         # print("desc_character:",desc_character)
         # print("decs_words:",decs_words)
-        dict_questionid_title[topic_id]=title_words+" "+decs_words
+        dict_questionid_title[topic_id] = f"{title_words} {decs_words}"
     print("len(dict_questionid_title):",len(dict_questionid_title))
     return dict_questionid_title
 
@@ -486,7 +500,7 @@ def stat_training_data_length():
     lines=f.readlines()
     length_dict={0:0,5:0,10:0,15:0,20:0,25:0,30:0,35:0,40:0,100:0,150:0,200:0,1500:0}
     length_list=[0,5,10,15,20,25,30,35,40,100,150,200,1500]
-    for i,line in enumerate(lines):
+    for line in lines:
         line_list=line.split('__label__')[0].strip().split(" ")
         length=len(line_list)
         #print(i,"length:",length)
@@ -501,57 +515,55 @@ def stat_training_data_length():
 
 
 if __name__ == '__main__':
-    if __name__ == '__main__':
-        if __name__ == '__main__':
-            #1.
-            #vocabulary_word2index, vocabulary_index2word=create_voabulary()
-            #vocabulary_word2index_label, vocabulary_index2word_label=create_voabulary_label()
-            #load_data_with_multilabels(vocabulary_word2index,vocabulary_word2index_label,data_type='test')
-            #2.
-            #sentence=u'我想开通创业板'
-            #sentence='w18476 w4454 w1674 w6 w25 w474 w1333 w1467 w863 w6 w4430 w11 w813 w4463 w863 w6 w4430 w111'
-            #result=process_one_sentence_to_get_ui_bi_tri_gram(sentence,n_gram=3)
-            #print(len(result),"result:",result)
+    #1.
+    #vocabulary_word2index, vocabulary_index2word=create_voabulary()
+    #vocabulary_word2index_label, vocabulary_index2word_label=create_voabulary_label()
+    #load_data_with_multilabels(vocabulary_word2index,vocabulary_word2index_label,data_type='test')
+    #2.
+    #sentence=u'我想开通创业板'
+    #sentence='w18476 w4454 w1674 w6 w25 w474 w1333 w1467 w863 w6 w4430 w11 w813 w4463 w863 w6 w4430 w111'
+    #result=process_one_sentence_to_get_ui_bi_tri_gram(sentence,n_gram=3)
+    #print(len(result),"result:",result)
 
-            #3. transform to multilabel
-            #label_list=[0,1,4,9,5]
-            #result=transform_multilabel_as_multihot(label_list,label_size=15)
-            #print("result:",result)
+    #3. transform to multilabel
+    #label_list=[0,1,4,9,5]
+    #result=transform_multilabel_as_multihot(label_list,label_size=15)
+    #print("result:",result)
 
-            #4.load data for predict-----------------------------------------------------------------
-            #file_path='test-zhihu-forpredict-v4only-title.txt'
-            #questionid_question_lists=load_final_test_data(file_path)
+    #4.load data for predict-----------------------------------------------------------------
+    #file_path='test-zhihu-forpredict-v4only-title.txt'
+    #questionid_question_lists=load_final_test_data(file_path)
 
-            #vocabulary_word2index, vocabulary_index2word=create_voabulary()
-            #vocabulary_word2index_label,_=create_voabulary_label()
-            #final_list=load_data_predict(vocabulary_word2index, vocabulary_word2index_label, questionid_question_lists)
+    #vocabulary_word2index, vocabulary_index2word=create_voabulary()
+    #vocabulary_word2index_label,_=create_voabulary_label()
+    #final_list=load_data_predict(vocabulary_word2index, vocabulary_word2index_label, questionid_question_lists)
 
-            #5.process label require lengh
-            #ys_list=[99999]
-            #ys_list_result=proces_label_to_algin(ys_list,require_size=5)
-            #print(ys_list,"ys_list_result1.:",ys_list_result)
-            #ys_list=[99999,23423432,67566765]
-            #ys_list_result=proces_label_to_algin(ys_list,require_size=5)
-            #print(ys_list,"ys_list_result2.:",ys_list_result)
-            #ys_list=[99999,23423432,67566765,23333333]
-            #ys_list_result=proces_label_to_algin(ys_list,require_size=5)
-            #print(ys_list,"ys_list_result2.:",ys_list_result)
-            #ys_list = [99999, 23423432, 67566765,44543543,546546546,323423434]
-            #ys_list_result = proces_label_to_algin(ys_list, require_size=5)
-            #print(ys_list, "ys_list_result3.:", ys_list_result)
+    #5.process label require lengh
+    #ys_list=[99999]
+    #ys_list_result=proces_label_to_algin(ys_list,require_size=5)
+    #print(ys_list,"ys_list_result1.:",ys_list_result)
+    #ys_list=[99999,23423432,67566765]
+    #ys_list_result=proces_label_to_algin(ys_list,require_size=5)
+    #print(ys_list,"ys_list_result2.:",ys_list_result)
+    #ys_list=[99999,23423432,67566765,23333333]
+    #ys_list_result=proces_label_to_algin(ys_list,require_size=5)
+    #print(ys_list,"ys_list_result2.:",ys_list_result)
+    #ys_list = [99999, 23423432, 67566765,44543543,546546546,323423434]
+    #ys_list_result = proces_label_to_algin(ys_list, require_size=5)
+    #print(ys_list, "ys_list_result3.:", ys_list_result)
 
-            #6.create vocabulary label. sorted.
-            #create_voabulary_label()
+    #6.create vocabulary label. sorted.
+    #create_voabulary_label()
 
-            #d={'a':3,'b':2,'c':11}
-            #d_=sort_by_value(d)
-            #print("d_",d_)
+    #d={'a':3,'b':2,'c':11}
+    #d_=sort_by_value(d)
+    #print("d_",d_)
 
-            #7.
-            #test_pad()
+    #7.
+    #test_pad()
 
-            #8.read topic info
-            #read_topic_info()
+    #8.read topic info
+    #read_topic_info()
 
-            #9。
-            stat_training_data_length()
+    #9。
+    stat_training_data_length()

@@ -110,7 +110,7 @@ class TextRCNN:
 
         #2. get list of context left
         context_left_list=[]
-        for i,current_embedding_word in enumerate(embedded_words_squeezed):#sentence_length个[None,embed_size]
+        for current_embedding_word in embedded_words_squeezed:
             context_left=self.get_context_left(context_left_previous, embedding_previous) #[None,embed_size]
             context_left_list.append(context_left) #append result to list
             embedding_previous=current_embedding_word #assign embedding_previous
@@ -122,7 +122,7 @@ class TextRCNN:
         embedding_afterward=self.right_side_last_word #tf.zeros((self.batch_size,self.embed_size)) # TODO self.right_side_last_word SHOULD WE ASSIGN A VARIABLE HERE
         context_right_afterward = tf.zeros((self.batch_size, self.embed_size)) #self.right_side_context_last # TODO SHOULD WE ASSIGN A VARIABLE HERE
         context_right_list=[]
-        for j,current_embedding_word in enumerate(embedded_words_squeezed2):
+        for current_embedding_word in embedded_words_squeezed2:
             context_right=self.get_context_right(context_right_afterward,embedding_afterward)
             context_right_list.append(context_right)
             embedding_afterward=current_embedding_word
@@ -134,9 +134,7 @@ class TextRCNN:
             representation=tf.concat([context_left_list[index],current_embedding_word,context_right_list[index]],axis=1) #representation's shape:[None,embed_size*3]
             output_list.append(representation) #shape:sentence_length个[None,embed_size*3]
 
-        #5. stack list to a tensor
-        output=tf.stack(output_list,axis=1) #shape:[None,sentence_length,embed_size*3]
-        return output
+        return tf.stack(output_list,axis=1)
 
 
     def inference(self):
@@ -188,8 +186,12 @@ class TextRCNN:
     def train(self):
         """based on the loss, use SGD to update parameter"""
         learning_rate = tf.train.exponential_decay(self.learning_rate, self.global_step, self.decay_steps,self.decay_rate, staircase=True)
-        train_op = tf.contrib.layers.optimize_loss(self.loss_val, global_step=self.global_step,learning_rate=learning_rate, optimizer="Adam")
-        return train_op
+        return tf.contrib.layers.optimize_loss(
+            self.loss_val,
+            global_step=self.global_step,
+            learning_rate=learning_rate,
+            optimizer="Adam",
+        )
 
 #test started
 def test():
@@ -207,7 +209,7 @@ def test():
     textRNN=TextRCNN(num_classes, learning_rate, batch_size, decay_steps, decay_rate,sequence_length,vocab_size,embed_size,is_training)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(100):
+        for _ in range(100):
             input_x=np.zeros((batch_size,sequence_length)) #[None, self.sequence_length]
             input_y=input_y=np.array([1,0,1,1,1,2,1,1]) #np.zeros((batch_size),dtype=np.int32) #[None, self.sequence_length]
             loss,acc,predict,_=sess.run([textRNN.loss_val,textRNN.accuracy,textRNN.predictions,textRNN.train_op],

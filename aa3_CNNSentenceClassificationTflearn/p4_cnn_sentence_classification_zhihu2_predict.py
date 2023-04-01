@@ -49,7 +49,8 @@ testX, testY = test
 print("testX.shape:",np.array(testX).shape) #2500个list.每个list代表一句话
 print("testY.shape:",np.array(testY).shape) #2500个label
 print("testX[0]:",testX[0]) #[17, 25, 10, 406, 26, 14, 56, 61, 62, 323, 4]
-print("testX[1]:",testX[1]);print("testY[0]:",testY[0]) #0 ;print("testY[1]:",testY[1]) #0
+print("testX[1]:",testX[1])
+print("testY[0]:",testY[0]) #0 ;print("testY[1]:",testY[1]) #0
 
 # 2.Data preprocessing
 # Sequence padding
@@ -60,8 +61,6 @@ testX = pad_sequences(testX, maxlen=100, value=0.)   #padding to max length
 trainY = to_categorical(trainY, nb_classes=number_classes) #y as one hot
 testY = to_categorical(testY, nb_classes=number_classes)   #y as one hot
 print("end padding & transform to one hot...")
-#--------------------------------------------------------------------------------------------------
-    # cache trainX,trainY,testX,testY for next time use.
 #    with open(f_cache, 'w') as f:
 #        pickle.dump((trainX,trainY,testX,testY,vocab_size),f)
 #else:
@@ -72,7 +71,6 @@ print("end padding & transform to one hot...")
 #(shape=None, placeholder=None, dtype=tf.float32,data_preprocessing=None, data_augmentation=None,name="InputData")
 network = input_data(shape=[None, 100], name='input') #[None, 100] `input_data` is used as a data entry (placeholder) of a network. This placeholder will be feeded with data when training
 network = tflearn.embedding(network, input_dim=vocab_size, output_dim=128) #TODO [None, 100,128].embedding layer for a sequence of ids. network: Incoming 2-D Tensor. input_dim: vocabulary size, oput_dim:embedding size
-         #conv_1d(incoming,nb_filter,filter_size)
 branch1 = conv_1d(network, 128, 1, padding='valid', activation='relu', regularizer="L2")
 branch2 = conv_1d(network, 128, 2, padding='valid', activation='relu', regularizer="L2")
 branch3 = conv_1d(network, 128, 3, padding='valid', activation='relu', regularizer="L2") # [batch_size, new steps1, nb_filters]. padding:"VALID",only ever drops the right-most columns
@@ -92,6 +90,6 @@ model = tflearn.DNN(network, tensorboard_verbose=0)
 #model.save('model_zhihu_cnn12345')
 model.load('model_zhihu_cnn12345')
 print("going to make a prediction...")
-predict_result=model.predict(testX[0:1000])
+predict_result = model.predict(testX[:1000])
 print("predict_result:",predict_result)
 print("ended...")
